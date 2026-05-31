@@ -36,9 +36,14 @@ Single user (me). Privacy is not a concern. Must cost nothing to run repeatedly.
   "this output is wrong → " correction box that appends to corrections.md.
 - **LaTeX compile:** Tectonic (single self-contained binary). One-command compile.
   NOTE: Tectonic uses XeTeX. After compiling, verify the PDF has a selectable,
-  correctly-ordered text layer (extract text and check it's not scrambled). Expose
-  an optional pdflatex (TeX Live) fallback path in config for the final submitted
-  PDF if a parser ever struggles with the XeTeX text layer.
+  correctly-ordered text layer (extract text and check it's not scrambled).
+  **pdflatex fallback (defined path, not just "anticipated"):** `config.yaml`
+  exposes a `pdflatex_fallback` block — when its `path` is set (a TeX Live
+  `pdflatex`/`latexmk` binary), `compile.py` can run a "final submission" build
+  through it as an alternate renderer. The default renderer is Tectonic; the
+  fallback is opt-in per build (e.g. a `--final`/`pdflatex` flag) for the rare
+  case a specific ATS parser struggles with the XeTeX output. If `path` is null,
+  the fallback is simply unavailable and Tectonic is always used.
 - **RAG:** lightweight. Store past (JD-context → correction/example) pairs with
   embeddings in a local store. Corpus is small (hundreds of items max), so use
   SQLite + cosine similarity over stored vectors (or sqlite-vec if trivial to
@@ -125,7 +130,17 @@ resume-tailor/
 - Start from Jake's Resume (github.com/jakegut/resume, MIT). Single column.
 - Replace its `\begin{multicols}{4}` coursework block with a single-column
   comma-separated list (multicols can scramble ATS reading order).
-- Keep `\input{glyphtounicode}` and `\pdfgentounicode=1` for clean text extraction.
+- Clean text extraction: use a Unicode-native XeTeX setup via `fontspec` with an
+  OpenType font Tectonic can fetch on a bare machine (Latin Modern, loaded BY OTF
+  FILENAME — loading by font *name* fails where the font isn't installed system-
+  wide); this produces correct ToUnicode maps natively. Do NOT use
+  `\input{glyphtounicode}` / `\pdfgentounicode=1` — those are pdfTeX primitives
+  that XeTeX does not define and that HALT the Tectonic compile. Set
+  `Kerning=Off` on the font (bold kern pairs otherwise extract as spurious word
+  breaks, e.g. "Frameworks" → "F rameworks", which breaks keyword tokenization),
+  and prefer literal Unicode en-dashes (–, U+2013) over `--` in date ranges.
+  Verify by extracting the text layer post-compile: assert one page, no U+FFFD,
+  correct dash codepoints, and that bold keyword labels are not split.
 - Standard section headings only (Experience, Education, Skills, Projects).
 - No tables-for-layout, no icons, no text inside graphics, no header/footer contact
   info — contact line goes in the body.

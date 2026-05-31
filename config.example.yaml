@@ -23,11 +23,15 @@ tailor_model:
 rag_top_k: 4
 
 # LaTeX compile
-# Leave tectonic_path as "tectonic" to use the one on PATH.
+# Default renderer is Tectonic (XeTeX). Leave tectonic_path as "tectonic" to use
+# the one on PATH; setup may set an absolute path to a downloaded binary.
 tectonic_path: "tectonic"
-# Optional TeX Live pdflatex fallback for the final submitted PDF if a parser
-# ever struggles with Tectonic's XeTeX text layer. null = disabled.
-pdflatex_fallback: null
+# TeX Live pdflatex fallback renderer for a "final submission" build. compile.py
+# uses Tectonic by default and can route a build through this fallback (e.g. a
+# --final flag) for the rare case a specific ATS parser struggles with the XeTeX
+# output. Set `path` to a pdflatex/latexmk binary to enable; null = unavailable.
+pdflatex_fallback:
+  path: null
 
 # FastAPI server
 server_port: 8000
