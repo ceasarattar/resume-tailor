@@ -1,6 +1,6 @@
 @echo off
 REM run.bat — Windows launcher. git pull on launch, app while running, git push on exit.
-setlocal enableextensions
+setlocal enableextensions enabledelayedexpansion
 cd /d "%~dp0"
 
 if not exist ".venv\Scripts\python.exe" (
@@ -45,7 +45,7 @@ if /i "%AUTOPUSH%"=="true" (
     git diff --cached --quiet
     if errorlevel 1 (
       for /f "usebackq delims=" %%T in (`powershell -NoProfile -Command "Get-Date -Format 'yyyy-MM-dd HH:mm:ss'"`) do set "TS=%%T"
-      git commit -m "auto: session %TS%" >nul
+      git commit -m "auto: session !TS!" >nul
       git push || echo WARN: git push failed (set an upstream remote/branch first).
     ) else (
       echo ==^> No changes to push.

@@ -50,7 +50,7 @@ def load_config() -> dict[str, Any]:
 
 def tailor_model(cfg: dict[str, Any] | None = None) -> str:
     """Resolve the tailoring model for the current machine tier."""
-    cfg = cfg or load_config()
+    cfg = load_config() if cfg is None else cfg
     tier = cfg.get("machine_tier", "mac")
     tm = cfg.get("tailor_model")
     if isinstance(tm, dict):
@@ -60,7 +60,7 @@ def tailor_model(cfg: dict[str, Any] | None = None) -> str:
 
 def ollama_native_base(cfg: dict[str, Any] | None = None) -> str:
     """Return the native Ollama base URL (strip a trailing /v1 if present)."""
-    cfg = cfg or load_config()
+    cfg = load_config() if cfg is None else cfg
     base = (cfg.get("ollama_base_url") or "http://localhost:11434/v1").rstrip("/")
     if base.endswith("/v1"):
         base = base[: -len("/v1")]

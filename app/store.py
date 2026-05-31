@@ -97,7 +97,7 @@ def record(
         "date": date,
         "company": company,
         "role": role,
-        "path": str(out_dir.relative_to(PATHS.root)),
+        "path": out_dir.relative_to(PATHS.root).as_posix(),
         "status": status,
         "missing_requirements": missing_requirements,
         "keywords_used": keywords_used,

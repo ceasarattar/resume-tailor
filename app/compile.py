@@ -131,11 +131,13 @@ def ats_check(pdf_path: Path) -> ATSReport:
             issues.append(f"{name}: ligature codepoint(s) present {present} (set Ligatures=NoCommon)")
 
     # Spurious-split heuristic: a single uppercase letter followed by a space then
-    # lowercase ("F rameworks") indicates a kerning/extraction artifact.
+    # lowercase ("F rameworks") indicates a kerning/extraction artifact. Exclude
+    # "A" and "I" — the only legitimate single-letter English words — so real
+    # phrases like "I led a team" / "A backend role" don't false-positive.
     import re as _re
 
     for name, text in (("pypdf", pypdf_text), ("pdfminer", pdfminer_text)):
-        for m in _re.finditer(r"\b([A-Z]) ([a-z]{2,})", text):
+        for m in _re.finditer(r"\b([B-HJ-Z]) ([a-z]{2,})", text):
             issues.append(f"{name}: possible split word '{m.group(1)} {m.group(2)}'")
 
     report = ATSReport(
