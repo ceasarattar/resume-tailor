@@ -10,9 +10,10 @@ config.yaml
 # Local embeddings store
 data/rag.sqlite
 
-# Tectonic cache
+# Tectonic cache + locally-downloaded Tectonic binary
 .tectonic/
 **/tectonic-cache/
+.tools/
 
 # OS noise
 .DS_Store
