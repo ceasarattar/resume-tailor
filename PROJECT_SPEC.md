@@ -136,13 +136,16 @@ resume-tailor/
   wide); this produces correct ToUnicode maps natively. Do NOT use
   `\input{glyphtounicode}` / `\pdfgentounicode=1` — those are pdfTeX primitives
   that XeTeX does not define and that HALT the Tectonic compile. Set
-  `Kerning=Off` on the font (bold kern pairs otherwise extract as spurious word
-  breaks, e.g. "Frameworks" → "F rameworks", which breaks keyword tokenization),
-  and prefer literal Unicode en-dashes (–, U+2013) over `--` in date ranges.
+  `Kerning=Off` AND `Ligatures=NoCommon` on the font: bold kern pairs otherwise
+  extract as spurious word breaks (e.g. "Frameworks" → "F rameworks"), and
+  f-ligatures otherwise extract as single glyphs U+FB00..U+FB04 (e.g.
+  "efficient" → "e<ff>icient") — both break keyword tokenization. Prefer literal
+  Unicode en-dashes (–, U+2013) over `--` in date ranges.
   Keep the colon INSIDE bold labels — `\textbf{Relevant Coursework:}` not
   `\textbf{Relevant Coursework}:` — because a multi-word bold phrase followed by
   an outside colon extracts with a spurious space ("Coursework :"). Verify by
-  extracting the text layer post-compile: assert one page, no U+FFFD, correct
+  extracting the text layer post-compile (cross-check with two independent
+  extractors): assert one page, no U+FFFD, no U+FB00..U+FB06 ligatures, correct
   dash codepoints, that bold keyword labels are not split, and no spurious space
   before label colons.
 - Standard section headings only (Experience, Education, Skills, Projects).

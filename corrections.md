@@ -27,7 +27,8 @@ appended under "Learned corrections" as structured lines.
    - Use a literal en-dash (–) in date ranges, not `--`.
    - Do not add `\input{glyphtounicode}` / `\pdfgentounicode=1` (pdfTeX-only;
      they break the Tectonic/XeTeX compile). The base template's font setup
-     already produces clean Unicode text.
+     (fontspec + Latin Modern, Kerning=Off, Ligatures=NoCommon) already produces
+     clean, searchable Unicode text — do not change the font preamble.
 
 ## Learned corrections
 

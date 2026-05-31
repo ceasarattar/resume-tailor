@@ -22,8 +22,11 @@
 %   - Kerning=Off: Latin Modern's bold kern pairs (F, T, V, Y + lowercase) are
 %     emitted as positioning jumps that text extractors misread as spaces
 %     ("Frameworks" -> "F rameworks"), which would break keyword tokenization.
-%     Disabling kerning removes that artifact. Verified by extracting the text
-%     layer post-compile.
+%   - Ligatures=NoCommon: otherwise f-ligatures (ff/fi/fl -> U+FB00..U+FB04)
+%     extract as a single glyph, so "efficient"/"traffic"/"workflow" become
+%     "e<ff>icient" etc. and an ATS misses the keyword. Disabling them keeps
+%     every letter a separate, searchable character.
+%     Both are verified by extracting the text layer post-compile.
 %   - Date ranges use a literal en-dash (–, U+2013) rather than "--" so the
 %     glyph never depends on ligature/shaping behavior.
 %-------------------------------------------------------------------------------
@@ -47,6 +50,7 @@
   ItalicFont     = lmroman10-italic.otf,
   BoldItalicFont = lmroman10-bolditalic.otf,
   Kerning        = Off,
+  Ligatures      = NoCommon,
 ]
 
 \pagestyle{fancy}
