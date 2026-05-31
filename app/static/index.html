@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Resume Tailor</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Resume Tailor</h1>
+    <div id="health" class="health" title="Backend status">checking…</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>1 · Job description</h2>
+      <textarea id="jd" rows="12" placeholder="Paste the full job description here…"></textarea>
+      <div class="row">
+        <button id="loadPending" class="ghost" type="button">Load from extension</button>
+        <button id="parseBtn" type="button">Parse</button>
+      </div>
+    </section>
+
+    <section class="card" id="confirmCard" hidden>
+      <h2>2 · Confirm target</h2>
+      <div class="grid2">
+        <label>Company <input id="company" type="text" /></label>
+        <label>Role <input id="role" type="text" /></label>
+      </div>
+      <p class="meta"><strong>Seniority:</strong> <span id="seniority">—</span></p>
+      <p class="meta"><strong>Keywords:</strong> <span id="keywords">—</span></p>
+      <details>
+        <summary>Requirements</summary>
+        <div class="grid2">
+          <div><strong>Must-haves</strong><ul id="musts"></ul></div>
+          <div><strong>Nice-to-haves</strong><ul id="nices"></ul></div>
+        </div>
+      </details>
+      <div class="row">
+        <button id="generateBtn" type="button">Generate résumé</button>
+      </div>
+    </section>
+
+    <section class="card" id="resultCard" hidden>
+      <h2>3 · Result</h2>
+      <p id="atsStatus" class="meta"></p>
+      <div class="row">
+        <a id="pdfLink" class="ghost" href="#" target="_blank" rel="noopener">Open PDF</a>
+        <a id="texLink" class="ghost" href="#" target="_blank" rel="noopener">View .tex</a>
+      </div>
+      <iframe id="pdfFrame" title="Resume preview"></iframe>
+      <div class="grid2">
+        <div><strong>Changelog</strong><ul id="changelog"></ul></div>
+        <div><strong>Possibly missing (flagged, not faked)</strong><ul id="missing"></ul></div>
+      </div>
+    </section>
+
+    <section class="card" id="correctCard" hidden>
+      <h2>4 · This output is wrong →</h2>
+      <p class="meta">Your note is appended to <code>corrections.md</code> and applied to every future résumé.</p>
+      <textarea id="correction" rows="3" placeholder="e.g. Don't bold the company name; prefer 'led' over 'spearheaded'."></textarea>
+      <div class="row">
+        <button id="correctBtn" type="button">Save correction</button>
+        <span id="correctMsg" class="meta"></span>
+      </div>
+    </section>
+  </main>
+
+  <div id="overlay" class="overlay" hidden><div class="spinner"></div><p id="overlayMsg">Working…</p></div>
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

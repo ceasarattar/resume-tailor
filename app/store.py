@@ -56,6 +56,32 @@ def append_application(entry: dict[str, Any]) -> None:
     path.write_text(json.dumps(records, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def append_correction(text: str, *, company: str = "", role: str = "") -> str:
+    """Append a structured, dated correction line to corrections.md.
+
+    Returns the line written. (Phase 4 will also store it as a RAG example.)
+    """
+    text = " ".join(text.split()).strip()
+    if not text:
+        raise ValueError("Correction text is empty.")
+    date = datetime.now().date().isoformat()
+    ctx = f" (re: {role} @ {company})" if (company or role) else ""
+    line = f"- {date}{ctx}: {text}"
+
+    path = PATHS.corrections
+    content = path.read_text(encoding="utf-8") if path.exists() else "# corrections.md\n"
+    if not content.endswith("\n"):
+        content += "\n"
+    # Append under the "## Learned corrections" section if present, else at end.
+    marker = "## Learned corrections"
+    if marker in content:
+        content = content.rstrip("\n") + "\n" + line + "\n"
+    else:
+        content += f"\n{marker}\n\n{line}\n"
+    path.write_text(content, encoding="utf-8")
+    return line
+
+
 def record(
     *,
     date: str,
