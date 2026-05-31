@@ -93,9 +93,16 @@ async function doGenerate() {
     $("pdfFrame").src = r.pdf_url + bust;
     $("pdfLink").href = r.pdf_url + bust;
     $("texLink").href = r.tex_url + bust;
-    $("atsStatus").textContent = r.ats_ok
+    let status = r.ats_ok
       ? "✓ ATS text-layer check passed (1 page, clean extraction)."
       : "⚠ ATS issues: " + r.ats_issues.join("; ");
+    if (r.grounding_ok === false) {
+      status += "  |  ⛔ HONESTY CHECK FAILED — possible fabrication: " +
+        (r.grounding_violations || []).join("; ") + ". Review before using.";
+    } else if (r.grounding_ok === true) {
+      status += "  |  ✓ Honesty check passed.";
+    }
+    $("atsStatus").textContent = status;
     fillList("changelog", r.changelog);
     fillList("missing", r.missing_requirements);
     $("resultCard").hidden = false;
@@ -120,6 +127,7 @@ async function doCorrect() {
         text,
         company: $("company").value.trim(),
         role: $("role").value.trim(),
+        jd_context: $("jd").value.trim().slice(0, 4000),
       }),
     });
     $("correction").value = "";

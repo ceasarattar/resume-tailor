@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import llm, parse, store
+from . import llm, parse, rag, store
 from .cli import generate_resume
 from .compile import _resolve_tectonic
 from .config import PATHS, load_config
@@ -60,6 +60,7 @@ class CorrectReq(BaseModel):
     text: str
     company: str | None = ""
     role: str | None = ""
+    jd_context: str | None = ""
 
 
 class IngestReq(BaseModel):
@@ -122,6 +123,8 @@ async def api_generate(req: GenerateReq) -> dict:
         "keywords_used": res.keywords_used,
         "ats_ok": res.ats_ok,
         "ats_issues": res.ats_issues,
+        "grounding_ok": res.grounding_ok,
+        "grounding_violations": res.grounding_violations,
     }
 
 
@@ -131,7 +134,11 @@ def api_correct(req: CorrectReq) -> dict:
         line = store.append_correction(req.text, company=req.company or "", role=req.role or "")
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return {"ok": True, "line": line}
+    # Also index it for RAG (best-effort). Context = the JD it was made against,
+    # falling back to "role @ company".
+    ctx = (req.jd_context or "").strip() or f"{req.role or ''} @ {req.company or ''}".strip(" @")
+    indexed = rag.add(req.text, jd_context=ctx, kind="correction", source="ui")
+    return {"ok": True, "line": line, "rag_indexed": indexed}
 
 
 @app.post("/ingest")

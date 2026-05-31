@@ -9,13 +9,15 @@ and this CLI share exactly one pipeline path.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import compile as comp
 from . import parse as parsemod
-from . import store, tailor
+from . import rag, store, tailor
+from .config import PATHS, load_config
 from .llm import OllamaError
 
 
@@ -31,6 +33,8 @@ class GenerateResult:
     keywords_used: list[str] = field(default_factory=list)
     ats_ok: bool = True
     ats_issues: list[str] = field(default_factory=list)
+    grounding_ok: bool = True
+    grounding_violations: list[str] = field(default_factory=list)
 
 
 def generate_resume(
@@ -58,21 +62,62 @@ def generate_resume(
     brief_md = parsemod.to_brief_md(jd)
     parsemod.save_brief(jd)
 
-    result = tailor.tailor(jd)
+    # RAG: retrieve relevant past corrections/examples for this JD (best-effort).
+    rag_query = " ".join(
+        [jd.title, jd.company, " ".join(jd.keywords), " ".join(jd.must_haves)]
+    ).strip()
+    rag_snippets = rag.retrieve(rag_query, int(load_config().get("rag_top_k", 4)))
+
+    # Honesty inputs: forbidden terms, contact name, and real employers from profile.
+    about_me = PATHS.about_me.read_text(encoding="utf-8") if PATHS.about_me.exists() else ""
+    try:
+        experience_data = json.loads(PATHS.experience.read_text(encoding="utf-8"))
+    except Exception:
+        experience_data = {}
 
     out_dir = store.output_dir_for(date, company_slug, role_slug)
     tex_path = out_dir / "tailored.tex"
-    tex_path.write_text(result.tex, encoding="utf-8")
 
-    try:
-        pdf_path = comp.compile_tex(tex_path, out_dir, final=final)
-    except comp.CompileError as exc:
-        fixed = tailor.repair(result.tex, str(exc))
-        tex_path.write_text(fixed, encoding="utf-8")
-        result.tex = fixed
-        pdf_path = comp.compile_tex(tex_path, out_dir, final=final)
+    def _tailor_compile_check(extra: str = ""):
+        result = tailor.tailor(jd, rag_snippets=rag_snippets, extra_instructions=extra)
+        # Contact header is structured data — inject it deterministically rather
+        # than trusting the model (which tends to leave the template placeholders).
+        result.tex = tailor.backfill_contact(result.tex, experience_data)
+        tex_path.write_text(result.tex, encoding="utf-8")
+        try:
+            pdf = comp.compile_tex(tex_path, out_dir, final=final)
+        except comp.CompileError as exc:
+            fixed = tailor.repair(result.tex, str(exc))
+            tex_path.write_text(fixed, encoding="utf-8")
+            result.tex = fixed
+            pdf = comp.compile_tex(tex_path, out_dir, final=final)
+        rep = comp.ats_check(pdf)
+        text = rep.extractors.get("pypdf", "")
+        viol = tailor.grounding_violations(text, about_me=about_me, experience=experience_data)
+        return result, pdf, rep, viol
 
-    report = comp.ats_check(pdf_path)
+    result, pdf_path, report, violations = _tailor_compile_check()
+
+    # Honesty gate: if the model claimed forbidden skills or altered the name,
+    # regenerate ONCE with explicit feedback. Surface (never hide) any remaining
+    # violation rather than silently presenting a fabricated resume.
+    if violations:
+        feedback = (
+            "# CRITICAL HONESTY FEEDBACK (your previous draft FAILED)\n"
+            "Your previous attempt violated the ground-truth profile:\n"
+            + "\n".join(f"- {v}" for v in violations)
+            + "\nRegenerate using ONLY facts from the profile. Do NOT mention any "
+            "forbidden item. Use the candidate's real name and real employers "
+            "exactly as in experience.json. If a JD requirement isn't in the "
+            "profile, leave it out and let it be flagged as missing.\n"
+        )
+        r2, p2, rep2, viol2 = _tailor_compile_check(feedback)
+        # Keep the regenerated version if it's at least as honest.
+        if len(viol2) <= len(violations):
+            result, pdf_path, report, violations = r2, p2, rep2, viol2
+
+    grounding_ok = not violations
+    status = "generated" if (report.ok and grounding_ok) else "generated_with_warnings"
 
     out_dir = store.write_outputs(
         date=date, company=company_slug, role=role_slug,
@@ -82,7 +127,7 @@ def generate_resume(
         date=date, company=company_slug, role=role_slug, out_dir=out_dir,
         missing_requirements=result.missing_requirements,
         keywords_used=jd.keywords,
-        status="generated" if report.ok else "generated_with_warnings",
+        status=status,
     )
 
     return GenerateResult(
@@ -92,6 +137,7 @@ def generate_resume(
         missing_requirements=result.missing_requirements,
         keywords_used=jd.keywords,
         ats_ok=report.ok, ats_issues=report.issues,
+        grounding_ok=grounding_ok, grounding_violations=violations,
     )
 
 
@@ -106,8 +152,12 @@ def run(jd_path: Path, *, final: bool = False, keep_going: bool = False) -> int:
         print("WARN: ATS check found issues:", file=sys.stderr)
         for issue in res.ats_issues:
             print(f"  - {issue}", file=sys.stderr)
-        if not keep_going:
-            print("(stored anyway; use the output with care)", file=sys.stderr)
+
+    if not res.grounding_ok:
+        print("\n!!! HONESTY CHECK FAILED — the model may have fabricated content:", file=sys.stderr)
+        for v in res.grounding_violations:
+            print(f"  - {v}", file=sys.stderr)
+        print("  Review the resume carefully before using it.", file=sys.stderr)
 
     print(f"==> Done. Output: {res.out_dir}")
     if res.changelog:
@@ -118,7 +168,8 @@ def run(jd_path: Path, *, final: bool = False, keep_going: bool = False) -> int:
         print("\nPossibly missing requirements (flagged, not faked):")
         for m in res.missing_requirements:
             print(f"  - {m}")
-    return 0 if (res.ats_ok or keep_going) else 1
+    ok = (res.ats_ok and res.grounding_ok)
+    return 0 if (ok or keep_going) else 1
 
 
 def main(argv: list[str] | None = None) -> int:

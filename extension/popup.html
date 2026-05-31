@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { width: 300px; font: 13px system-ui, sans-serif; margin: 0; padding: 14px; background: #181b22; color: #e8eaed; }
+    h1 { font-size: 14px; margin: 0 0 4px; }
+    p { color: #9aa3af; margin: 0 0 12px; font-size: 12px; }
+    button { width: 100%; padding: 9px; border: 0; border-radius: 8px; background: #4f8cff; color: #fff; font-weight: 600; cursor: pointer; }
+    button:hover { filter: brightness(1.08); }
+    button:disabled { opacity: .6; cursor: default; }
+    .row { display: flex; gap: 8px; margin-top: 8px; }
+    .ghost { background: transparent; border: 1px solid #2a2f3a; color: #e8eaed; text-decoration: none; text-align: center; display: block; padding: 8px; border-radius: 8px; }
+    label { display: block; margin-top: 10px; color: #9aa3af; font-size: 12px; }
+    input { width: 100%; margin-top: 3px; padding: 6px; border-radius: 6px; border: 1px solid #2a2f3a; background: #0e1014; color: #e8eaed; }
+    #status { margin-top: 10px; font-size: 12px; min-height: 16px; }
+    .ok { color: #36c46a; } .bad { color: #e0a83a; }
+  </style>
+</head>
+<body>
+  <h1>Resume Tailor</h1>
+  <p>Select the job description (or just click capture to grab the page), then send it to your local app.</p>
+  <label>Company (optional)<input id="company" type="text" placeholder="auto-detected if blank" /></label>
+  <label>Role (optional)<input id="role" type="text" placeholder="auto-detected if blank" /></label>
+  <div class="row"><button id="capture">Capture JD → Resume Tailor</button></div>
+  <div id="status"></div>
+  <a class="ghost" id="open" href="http://localhost:8000" target="_blank" style="margin-top:10px;">Open Resume Tailor</a>
+  <script src="popup.js"></script>
+</body>
+</html>

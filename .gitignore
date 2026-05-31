@@ -23,3 +23,6 @@ Thumbs.db
 .claude/settings.local.json
 
 # NOTE: outputs/ is intentionally TRACKED (PDFs are tiny and double as a record).
+
+# Playwright visual-test output
+.playwright-mcp/

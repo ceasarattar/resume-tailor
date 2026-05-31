@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Resume Tailor — JD Capture",
+  "version": "1.0.0",
+  "description": "Capture a job description from the current page and send it to your local Resume Tailor app.",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Capture JD → Resume Tailor"
+  }
+}

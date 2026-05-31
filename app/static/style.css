@@ -9,6 +9,9 @@
   --line: #2a2f3a;
 }
 * { box-sizing: border-box; }
+/* The `hidden` attribute must win over explicit display rules below
+   (.overlay/.toast set display, which would otherwise show them). */
+[hidden] { display: none !important; }
 body {
   margin: 0;
   font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
