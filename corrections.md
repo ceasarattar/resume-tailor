@@ -21,6 +21,13 @@ appended under "Learned corrections" as structured lines.
    No multi-column layout, no tables-for-layout, no icons, no text inside graphics.
 8. When the JD requires something I appear to be missing, FLAG it in the missing-
    requirements list. Do not fake it to fill the gap.
+9. LaTeX text-layer hygiene (keeps the resume machine-readable for ATS):
+   - Keep the colon INSIDE bold labels: `\textbf{Relevant Coursework:}`, NOT
+     `\textbf{Relevant Coursework}:` (the latter extracts as "Coursework :").
+   - Use a literal en-dash (–) in date ranges, not `--`.
+   - Do not add `\input{glyphtounicode}` / `\pdfgentounicode=1` (pdfTeX-only;
+     they break the Tectonic/XeTeX compile). The base template's font setup
+     already produces clean Unicode text.
 
 ## Learned corrections
 

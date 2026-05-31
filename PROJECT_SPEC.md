@@ -139,8 +139,12 @@ resume-tailor/
   `Kerning=Off` on the font (bold kern pairs otherwise extract as spurious word
   breaks, e.g. "Frameworks" → "F rameworks", which breaks keyword tokenization),
   and prefer literal Unicode en-dashes (–, U+2013) over `--` in date ranges.
-  Verify by extracting the text layer post-compile: assert one page, no U+FFFD,
-  correct dash codepoints, and that bold keyword labels are not split.
+  Keep the colon INSIDE bold labels — `\textbf{Relevant Coursework:}` not
+  `\textbf{Relevant Coursework}:` — because a multi-word bold phrase followed by
+  an outside colon extracts with a spurious space ("Coursework :"). Verify by
+  extracting the text layer post-compile: assert one page, no U+FFFD, correct
+  dash codepoints, that bold keyword labels are not split, and no spurious space
+  before label colons.
 - Standard section headings only (Experience, Education, Skills, Projects).
 - No tables-for-layout, no icons, no text inside graphics, no header/footer contact
   info — contact line goes in the body.

@@ -146,7 +146,9 @@
       {Degree}{Start – End}
       \resumeItemListStart
         % Coursework as a single-column comma-separated list (NOT multicols).
-        \resumeItem{\textbf{Relevant Coursework}: Course One, Course Two, Course Three, Course Four}
+        % Colon stays INSIDE \textbf{} — a multi-word bold label followed by an
+        % outside colon extracts with a spurious space ("Coursework :").
+        \resumeItem{\textbf{Relevant Coursework:} Course One, Course Two, Course Three, Course Four}
       \resumeItemListEnd
   \resumeSubHeadingListEnd
 
@@ -163,10 +165,11 @@
 %-----------SKILLS (single-column comma-separated lists)-----------
 \section{Skills}
  \begin{itemize}[leftmargin=0.15in, label={}]
+    % Colon stays INSIDE \textbf{} (see Education note) for clean text extraction.
     \small{\item{
-     \textbf{Languages}: One, Two, Three \\
-     \textbf{Frameworks}: One, Two \\
-     \textbf{Tools}: One, Two, Three \\
+     \textbf{Languages:} One, Two, Three \\
+     \textbf{Frameworks:} One, Two \\
+     \textbf{Tools:} One, Two, Three \\
     }}
  \end{itemize}
 
