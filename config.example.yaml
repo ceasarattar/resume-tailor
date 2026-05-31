@@ -1,0 +1,39 @@
+# config.example.yaml — committed template.
+# setup copies this to config.yaml (gitignored) and sets machine_tier.
+# Edit config.yaml, not this file, for machine-specific values.
+
+# Ollama OpenAI-compatible endpoint
+ollama_base_url: "http://localhost:11434/v1"
+
+# Which machine this is. setup sets this: "mac" or "windows".
+# Drives which tailor_model is used below.
+machine_tier: "mac"
+
+# Models. Tags move over time — setup verifies the tag exists at pull time.
+# See https://ollama.com/library if a pull fails.
+parse_model: "qwen3:8b"
+embed_model: "nomic-embed-text"
+
+# Tailoring model per tier. Mac (16 GB) uses 8b; Windows may use 14b.
+tailor_model:
+  mac: "qwen3:8b"
+  windows: "qwen3:14b"
+
+# RAG retrieval
+rag_top_k: 4
+
+# LaTeX compile
+# Leave tectonic_path as "tectonic" to use the one on PATH.
+tectonic_path: "tectonic"
+# Optional TeX Live pdflatex fallback for the final submitted PDF if a parser
+# ever struggles with Tectonic's XeTeX text layer. null = disabled.
+pdflatex_fallback: null
+
+# FastAPI server
+server_port: 8000
+
+# Where tailored resumes are written
+output_dir: "outputs"
+
+# Auto git push on app exit (run.sh / run.bat)
+github_auto_push: true

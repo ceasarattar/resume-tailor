@@ -1,0 +1,48 @@
+{
+  "contact": {
+    "name": "",
+    "email": "",
+    "phone": "",
+    "location": "",
+    "linkedin": "",
+    "github": "",
+    "website": ""
+  },
+  "experience": [
+    {
+      "company": "",
+      "title": "",
+      "location": "",
+      "start": "",
+      "end": "",
+      "bullets": [
+        ""
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "",
+      "tech": [],
+      "bullets": [
+        ""
+      ]
+    }
+  ],
+  "education": [
+    {
+      "school": "",
+      "degree": "",
+      "location": "",
+      "start": "",
+      "end": "",
+      "notes": ""
+    }
+  ],
+  "skills": {
+    "languages": [],
+    "frameworks": [],
+    "tools": [],
+    "other": []
+  }
+}

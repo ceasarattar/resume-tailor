@@ -1,0 +1,153 @@
+%-------------------------------------------------------------------------------
+% Base resume template — adapted from Jake's Resume (github.com/jakegut/resume, MIT)
+% Single column, ATS-safe. The tailoring step rewrites the CONTENT between the
+% section markers; it must keep this structure single-column and one page.
+%
+% ATS rules baked in (see PROJECT_SPEC.md §6):
+%   - Single column only. No multicols (it scrambles ATS reading order).
+%   - Coursework / skills are comma-separated single-column lists.
+%   - \input{glyphtounicode} + \pdfgentounicode=1 kept for clean text extraction.
+%   - Standard headings only. No tables-for-layout, no icons, no graphics text.
+%   - Contact info lives in the BODY, not a header/footer.
+%-------------------------------------------------------------------------------
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\input{glyphtounicode}
+
+% Clean text extraction for ATS parsers
+\pdfgentounicode=1
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Section formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+%-------------------------------------------------------------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------------------------------------------
+\begin{document}
+
+%----------HEADING (contact line in the body, not a header)----------
+\begin{center}
+    \textbf{\Huge \scshape FIRST LAST} \\ \vspace{1pt}
+    \small PHONE $|$
+    \href{mailto:EMAIL}{\underline{EMAIL}} $|$
+    \href{https://linkedin.com/in/USERNAME}{\underline{linkedin.com/in/USERNAME}} $|$
+    \href{https://github.com/USERNAME}{\underline{github.com/USERNAME}}
+\end{center}
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+
+    \resumeSubheading
+      {Company}{Start -- End}
+      {Title}{Location}
+      \resumeItemListStart
+        \resumeItem{Accomplishment with real, verifiable metric.}
+        \resumeItem{Another bullet foregrounding relevant impact.}
+      \resumeItemListEnd
+
+  \resumeSubHeadingListEnd
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {University}{Location}
+      {Degree}{Start -- End}
+      \resumeItemListStart
+        % Coursework as a single-column comma-separated list (NOT multicols).
+        \resumeItem{\textbf{Relevant Coursework}: Course One, Course Two, Course Three, Course Four}
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+      \resumeProjectHeading
+          {\textbf{Project Name} $|$ \emph{Tech, Stack}}{Date}
+          \resumeItemListStart
+            \resumeItem{What it does and the impact, truthfully stated.}
+          \resumeItemListEnd
+    \resumeSubHeadingListEnd
+
+%-----------SKILLS (single-column comma-separated lists)-----------
+\section{Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Languages}: One, Two, Three \\
+     \textbf{Frameworks}: One, Two \\
+     \textbf{Tools}: One, Two, Three \\
+    }}
+ \end{itemize}
+
+%-------------------------------------------------------------------------------
+\end{document}

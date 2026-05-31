@@ -1,0 +1,24 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Real config (created by setup from config.example.yaml)
+config.yaml
+
+# Local embeddings store
+data/rag.sqlite
+
+# Tectonic cache
+.tectonic/
+**/tectonic-cache/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# NOTE: outputs/ is intentionally TRACKED (PDFs are tiny and double as a record).
