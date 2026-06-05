@@ -92,4 +92,24 @@ fi
 tectonic --version >/dev/null 2>&1 && say "Tectonic is responding." \
   || warn "Tectonic not responding on PATH — check the install."
 
-say "Setup complete. Run ./run.sh to start."
+# --- Smoke test: confirm the app can import and the toolchain is wired ---------
+say "Verifying the install..."
+./.venv/bin/python - <<'PY' || warn "Smoke test failed — see the error above."
+import sys
+from app import llm
+from app.compile import _resolve_tectonic
+from app.config import load_config
+cfg = load_config()
+print("    ollama:", llm.health())
+print("    tectonic:", _resolve_tectonic(cfg))
+print("    tier:", cfg.get("machine_tier"))
+PY
+
+echo
+say "Setup complete."
+echo "    Next steps:"
+echo "      1. Fill in your real background:"
+echo "           profile/about-me.md        (your story + a 'will NOT claim' list)"
+echo "           profile/experience.json    (contact, jobs, projects, education, skills)"
+echo "      2. Start the app:   ./run.sh    (opens http://localhost:8000)"
+echo "      3. Paste a job description, Parse, Generate."

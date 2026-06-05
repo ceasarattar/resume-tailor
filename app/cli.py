@@ -37,6 +37,22 @@ class GenerateResult:
     grounding_violations: list[str] = field(default_factory=list)
 
 
+def _profile_is_empty(experience_data: dict, about_me: str = "") -> bool:
+    """True if experience.json has no real content to build a resume from.
+
+    Based on structured data (not about-me prose, which in the template is all
+    HTML comments). A resume needs at minimum a name and one substantive section.
+    """
+    contact = experience_data.get("contact", {}) or {}
+    has_name = bool((contact.get("name") or "").strip())
+    has_job = any((e.get("company") or "").strip() for e in experience_data.get("experience", []))
+    has_edu = any((e.get("school") or "").strip() for e in experience_data.get("education", []))
+    has_proj = any((p.get("name") or "").strip() for p in experience_data.get("projects", []))
+    skills = experience_data.get("skills", {}) or {}
+    has_skills = any(v for v in skills.values()) if isinstance(skills, dict) else False
+    return not (has_name and (has_job or has_edu or has_proj or has_skills))
+
+
 def generate_resume(
     jd_text: str,
     *,
@@ -51,6 +67,19 @@ def generate_resume(
     """
     if len(jd_text.strip()) < 30:
         raise ValueError("Job description looks empty.")
+
+    # Honesty inputs + ground-truth profile.
+    about_me = PATHS.about_me.read_text(encoding="utf-8") if PATHS.about_me.exists() else ""
+    try:
+        experience_data = json.loads(PATHS.experience.read_text(encoding="utf-8"))
+    except Exception:
+        experience_data = {}
+    if _profile_is_empty(experience_data, about_me):
+        raise ValueError(
+            "Your profile is empty. Fill profile/experience.json (at least your "
+            "contact name and one experience entry) and profile/about-me.md before "
+            "generating — the system will not invent a background for you."
+        )
 
     jd = parsemod.parse_jd(jd_text)
     if company:
@@ -68,29 +97,17 @@ def generate_resume(
     ).strip()
     rag_snippets = rag.retrieve(rag_query, int(load_config().get("rag_top_k", 4)))
 
-    # Honesty inputs: forbidden terms, contact name, and real employers from profile.
-    about_me = PATHS.about_me.read_text(encoding="utf-8") if PATHS.about_me.exists() else ""
-    try:
-        experience_data = json.loads(PATHS.experience.read_text(encoding="utf-8"))
-    except Exception:
-        experience_data = {}
-
     out_dir = store.output_dir_for(date, company_slug, role_slug)
     tex_path = out_dir / "tailored.tex"
 
     def _tailor_compile_check(extra: str = ""):
-        result = tailor.tailor(jd, rag_snippets=rag_snippets, extra_instructions=extra)
-        # Contact header is structured data — inject it deterministically rather
-        # than trusting the model (which tends to leave the template placeholders).
-        result.tex = tailor.backfill_contact(result.tex, experience_data)
+        # Model returns structured content; Python renders the .tex deterministically
+        # (real contact/employers/dates, valid braces) — see app/render.py.
+        result = tailor.tailor(
+            jd, experience_data, rag_snippets=rag_snippets, extra_instructions=extra
+        )
         tex_path.write_text(result.tex, encoding="utf-8")
-        try:
-            pdf = comp.compile_tex(tex_path, out_dir, final=final)
-        except comp.CompileError as exc:
-            fixed = tailor.repair(result.tex, str(exc))
-            tex_path.write_text(fixed, encoding="utf-8")
-            result.tex = fixed
-            pdf = comp.compile_tex(tex_path, out_dir, final=final)
+        pdf = comp.compile_tex(tex_path, out_dir, final=final)
         rep = comp.ats_check(pdf)
         text = rep.extractors.get("pypdf", "")
         viol = tailor.grounding_violations(text, about_me=about_me, experience=experience_data)

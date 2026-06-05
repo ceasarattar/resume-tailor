@@ -1,24 +1,39 @@
-r"""Tailor a resume: profile + base template + corrections + parsed JD -> a
-complete, compile-ready, single-column .tex, plus a changelog and a list of JD
-requirements the candidate appears to be missing.
+r"""Tailor a resume.
 
-The model returns LaTeX between explicit markers (not JSON) so a full document
-doesn't have to survive JSON string-escaping. A fenced-block / \documentclass
-fallback parser handles models that ignore the markers.
+The model returns STRUCTURED CONTENT (a JSON "plan": tailored summary, rephrased
+bullets aligned to the real experience/projects, and ordered skill groups). Python
+then renders the .tex deterministically (app/render.py) from profile/experience.json
+metadata + that content. The model never emits LaTeX, so it can't corrupt braces
+or drift on names/dates, and every résumé compiles.
+
+Honesty is still enforced after rendering by grounding_violations().
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 
-from . import llm
+from pydantic import BaseModel, Field, ValidationError
+
+from . import llm, render
 from .config import PATHS, load_config, tailor_model
 from .parse import ParsedJD
 
-TEX_START = "===TEX==="
-TEX_END = "===END TEX==="
-CHANGELOG = "===CHANGELOG==="
-MISSING = "===MISSING==="
+
+# ---------------------------------------------------------------- output schema
+class SkillGroup(BaseModel):
+    label: str
+    items: list[str] = Field(default_factory=list)
+
+
+class TailorPlan(BaseModel):
+    summary: str = ""
+    experience_bullets: list[list[str]] = Field(default_factory=list)
+    project_bullets: list[list[str]] = Field(default_factory=list)
+    skills: list[SkillGroup] = Field(default_factory=list)
+    changelog: list[str] = Field(default_factory=list)
+    missing_requirements: list[str] = Field(default_factory=list)
 
 
 @dataclass
@@ -26,15 +41,16 @@ class TailorResult:
     tex: str
     changelog: list[str] = field(default_factory=list)
     missing_requirements: list[str] = field(default_factory=list)
-    raw: str = ""
+    plan: TailorPlan | None = None
 
 
 SYSTEM = (
-    "You are an expert resume writer producing ATS-safe, single-column LaTeX "
-    "resumes. You NEVER invent experience, employers, titles, dates, metrics, or "
-    "skills. You only reorder, rephrase, and surface what the profile actually "
-    "contains. You output a COMPLETE, compile-ready LaTeX document that compiles "
-    "with Tectonic (XeTeX)."
+    "You tailor resumes truthfully. You are given the candidate's REAL profile as "
+    "ground truth and a target job. You output ONLY structured JSON content "
+    "(a summary, rephrased bullet points, and skill groups). You NEVER invent "
+    "employers, titles, dates, metrics, degrees, or skills, and you never claim "
+    "anything the candidate listed as off-limits. You rephrase and reorder the "
+    "candidate's real material to foreground what's relevant to the job."
 )
 
 
@@ -45,16 +61,44 @@ def _read(path) -> str:
         return ""
 
 
+def _experience_view(experience: list[dict]) -> str:
+    lines = []
+    for i, e in enumerate(experience):
+        lines.append(
+            f"[{i}] {e.get('title','')} at {e.get('company','')} "
+            f"({e.get('start','')}-{e.get('end','')}), {e.get('location','')}"
+        )
+        for b in e.get("bullets", []):
+            if str(b).strip():
+                lines.append(f"      - {b}")
+    return "\n".join(lines) or "(none)"
+
+
+def _projects_view(projects: list[dict]) -> str:
+    lines = []
+    for i, p in enumerate(projects):
+        if not (p.get("name") or "").strip():
+            continue
+        lines.append(f"[{i}] {p.get('name','')} ({', '.join(p.get('tech', []))})")
+        for b in p.get("bullets", []):
+            if str(b).strip():
+                lines.append(f"      - {b}")
+    return "\n".join(lines) or "(none)"
+
+
 def build_messages(
     jd: ParsedJD,
+    experience_data: dict,
     *,
     rag_snippets: list[str] | None = None,
     extra_instructions: str = "",
 ) -> list[dict[str, str]]:
     corrections = _read(PATHS.corrections)
     about = _read(PATHS.about_me)
-    experience = _read(PATHS.experience)
-    base_tex = _read(PATHS.base_resume)
+    experience = experience_data.get("experience", [])
+    projects = experience_data.get("projects", [])
+    real_skills = experience_data.get("skills", {})
+
     rag_block = ""
     if rag_snippets:
         rag_block = "\n\n## Retrieved past corrections/examples\n" + "\n".join(
@@ -68,102 +112,101 @@ def build_messages(
         f"Nice-to-haves:\n" + "\n".join(f"- {n}" for n in jd.nice_to_haves)
     )
 
-    user = f"""Tailor my resume to the job below.
+    schema = json.dumps(TailorPlan.model_json_schema())
+
+    user = f"""Tailor my resume to the job below. Output ONLY JSON matching the schema.
 
 # Rules (corrections.md — follow ALL of these)
 {corrections}
 {rag_block}
 
-# My profile (ground truth — never claim anything not supported here)
-## about-me.md
+# My background (about-me.md — ground truth)
 {about}
 
-## experience.json
-{experience}
+# My experience entries (rephrase bullets; experience_bullets must align 1:1 by index)
+{_experience_view(experience)}
 
-# Base LaTeX template (keep this structure; single column; one page)
-```latex
-{base_tex}
-```
+# My projects (project_bullets align 1:1 by index)
+{_projects_view(projects)}
+
+# My real skills (only use these; you may reorder/relabel but never add new ones)
+{json.dumps(real_skills, indent=2)}
 
 # Target job
 {jd_block}
 
-{extra_instructions}
-# Your task
-Produce a COMPLETE compile-ready LaTeX document tailored to this job:
-(a) FILL IN MY REAL DATA. The base template contains placeholders — you MUST
-    replace every one with my actual information from experience.json:
-      - contact: real name, email, phone, location, linkedin, github
-      - each experience entry: real company, title, location, start/end dates
-      - education: real school, degree, dates
-      - projects: real project names, tech, and bullets
-    The output must contain ZERO of these placeholder strings: "First Last",
-    "email@example.com", "linkedin.com/in/username", "github.com/username",
-    "Company", "Title", "University", "Degree", "Course One", "Project Name",
-    "What it does and the impact". If I have no projects, omit the Projects
-    section entirely rather than leaving the placeholder.
-(b) keep the Skills section grouped as \textbf{{Languages:}}, \textbf{{Frameworks:}},
-    \textbf{{Tools:}} (comma-separated real skills) — reorder so JD keywords I
-    actually have surface first. Do NOT invent per-skill sub-labels.
-(c) reorder and rephrase experience bullets to foreground relevant impact, and
-    KEEP my real metrics (e.g. "12M requests/day", "40% latency") — do not drop them,
-(d) weave priority keywords in naturally (no stuffing, no hidden text),
-(e) NEVER invent anything: no fake employers, schools, skills, dates, or metrics.
-    If a JD requirement isn't in my profile, leave it out (it will be flagged as
-    missing). Keep it one page, single column,
-(f) keep colons INSIDE bold labels and literal en-dashes (–) in date ranges.
+# JSON schema
+{schema}
 
-# Output format (EXACTLY this, no extra prose)
-{TEX_START}
-<the full .tex from \\documentclass to \\end{{document}}>
-{TEX_END}
-{CHANGELOG}
-- <short changelog bullet>
-{MISSING}
-- <each JD requirement I appear to be missing, or "- none">
-"""
+# What to produce (JSON only)
+- "summary": 2-3 sentence professional summary, tailored to this role, using ONLY
+  facts true of me. No first person pronoun needed.
+- "experience_bullets": a list aligned 1:1 with my experience entries above (same
+  order, same count). For each, rephrase MY bullets to foreground relevance to the
+  job and weave in priority keywords I actually have. KEEP my real numbers/metrics.
+  Do NOT invent new achievements. You may drop a weak bullet but never fabricate.
+- "project_bullets": aligned 1:1 with my projects (same order). Same rules.
+- "skills": skill groups (e.g. label "Languages", "Frameworks", "Tools") containing
+  ONLY skills I listed, reordered so job-relevant ones come first.
+- "changelog": short bullets describing what you tailored.
+- "missing_requirements": each job requirement I do NOT have evidence for in my
+  profile. Be honest; this is expected and good.
+{extra_instructions}
+Return only the JSON object."""
     return [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]
 
 
-def _extract_tex(raw: str) -> str:
-    # 1) explicit markers
-    m = re.search(re.escape(TEX_START) + r"(.*?)" + re.escape(TEX_END), raw, re.DOTALL)
-    if m:
-        block = m.group(1).strip()
-    else:
-        # 2) fenced ```latex ... ```
-        m = re.search(r"```(?:latex|tex)?\s*(.*?)```", raw, re.DOTALL)
-        block = m.group(1).strip() if m else raw
-    # 3) trim to the actual document
-    dm = re.search(r"\\documentclass.*?\\end\{document\}", block, re.DOTALL)
-    return dm.group(0).strip() if dm else block.strip()
+def _parse_plan(raw: str) -> TailorPlan:
+    try:
+        return TailorPlan.model_validate_json(raw)
+    except ValidationError:
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if m:
+            return TailorPlan.model_validate_json(m.group(0))
+        raise
 
 
-def _extract_list(raw: str, header: str, until: list[str]) -> list[str]:
-    idx = raw.find(header)
-    if idx == -1:
-        return []
-    rest = raw[idx + len(header):]
-    for u in until:
-        j = rest.find(u)
-        if j != -1:
-            rest = rest[:j]
-    items = []
-    for line in rest.splitlines():
-        line = line.strip().lstrip("-*").strip()
-        if line and line.lower() != "none":
-            items.append(line)
-    return items
+def tailor(
+    jd: ParsedJD,
+    experience_data: dict,
+    *,
+    rag_snippets: list[str] | None = None,
+    extra_instructions: str = "",
+    num_predict: int = 4096,
+) -> TailorResult:
+    cfg = load_config()
+    model = tailor_model(cfg)
+    messages = build_messages(
+        jd, experience_data, rag_snippets=rag_snippets, extra_instructions=extra_instructions
+    )
+    raw = llm.chat(
+        messages, model=model, temperature=0.0, num_predict=num_predict,
+        fmt=TailorPlan.model_json_schema(),
+    )
+    plan = _parse_plan(raw)
+
+    skills = {g.label: g.items for g in plan.skills} or experience_data.get("skills", {})
+    # Normalize a flat skills dict from experience.json (lists under lowercase keys).
+    if not plan.skills and isinstance(experience_data.get("skills"), dict):
+        skills = {k.capitalize(): v for k, v in experience_data["skills"].items() if v}
+
+    tex = render.render_resume(
+        contact=experience_data.get("contact", {}),
+        summary=plan.summary,
+        experience=experience_data.get("experience", []),
+        education=experience_data.get("education", []),
+        projects=[p for p in experience_data.get("projects", []) if (p.get("name") or "").strip()],
+        skills=skills,
+        experience_bullets=plan.experience_bullets,
+        project_bullets=plan.project_bullets,
+    )
+    return TailorResult(
+        tex=tex, changelog=plan.changelog,
+        missing_requirements=plan.missing_requirements, plan=plan,
+    )
 
 
-def parse_output(raw: str) -> TailorResult:
-    tex = _extract_tex(raw)
-    changelog = _extract_list(raw, CHANGELOG, [MISSING, TEX_START])
-    missing = _extract_list(raw, MISSING, [CHANGELOG, TEX_START])
-    return TailorResult(tex=tex, changelog=changelog, missing_requirements=missing, raw=raw)
-
-
+# ------------------------------------------------------------ honesty checking
 _FORBIDDEN_STOP = {
     "I", "A", "AN", "THE", "NOT", "NO", "OR", "AND", "IN", "OF", "ON", "TO",
     "WITH", "HAVE", "HAS", "NEVER", "DON'T", "DONT", "USED", "USE", "WORKED",
@@ -173,140 +216,35 @@ _FORBIDDEN_STOP = {
 
 
 def forbidden_terms(about_me: str) -> list[str]:
-    """Heuristically pull branded/proper-noun terms from the 'Things I will NOT
-    claim' section of about-me.md (tokens containing an uppercase letter, minus
-    common words). Used as a deterministic honesty tripwire — e.g. 'Kafka',
-    'gRPC', 'IoT', 'Go'.
-    """
+    """Pull branded/proper-noun terms from the 'Things I will NOT claim' section."""
     low = about_me.lower()
     idx = low.find("not claim")
     if idx == -1:
         return []
     section = about_me[idx:]
-    # stop at the next top-level heading if any
     nl = section.find("\n## ")
     if nl != -1:
         section = section[:nl]
-    terms: list[str] = []
-    seen = set()
+    terms, seen = [], set()
     for raw in re.findall(r"[A-Za-z][A-Za-z0-9+#-]*", section):
         tok = raw.strip("-")
         if len(tok) < 2 or tok.upper() in _FORBIDDEN_STOP:
             continue
         if any(c.isupper() for c in tok) and tok.lower() not in seen:
-            # split slash groups like gRPC/protobuf -> handled by regex already
             seen.add(tok.lower())
             terms.append(tok)
     return terms
 
 
-# Unambiguous strings from base-resume.tex that must NEVER survive into output.
-# (We deliberately omit ambiguous words like "Company"/"University" that can be
-# substrings of real names — the "real employer present" check covers those.)
-_PLACEHOLDERS = [
-    "First Last", "email@example.com", "linkedin.com/in/username",
-    "github.com/username", "Course One", "Course Two", "Project Name",
-    "What it does and the impact", "Accomplishment with real",
-    "Another bullet foregrounding", "Tech, Stack",
-]
-
-
-def backfill_contact(tex: str, experience: dict | None = None) -> str:
-    """Deterministically replace contact-header placeholders with the real values
-    from experience.json. Contact info is structured data — never trust the LLM
-    with it. Idempotent; only replaces placeholders that are still present.
-    """
-    c = (experience or {}).get("contact", {}) or {}
-    repl = {
-        "First Last": c.get("name", ""),
-        "email@example.com": c.get("email", ""),
-        "linkedin.com/in/username": c.get("linkedin", ""),
-        "github.com/username": c.get("github", ""),
-    }
-    for placeholder, value in repl.items():
-        if value:
-            # normalize linkedin/github to bare host/path (template adds https://)
-            v = value.strip()
-            for pre in ("https://", "http://"):
-                if v.startswith(pre):
-                    v = v[len(pre):]
-            tex = tex.replace(placeholder, v)
-    phone = c.get("phone", "")
-    if phone:
-        tex = re.sub(r"(?<![A-Za-z])Phone(?=\s*\$\|\$)", phone, tex)
-    return tex
-
-
 def grounding_violations(resume_text: str, *, about_me: str, experience: dict | None = None) -> list[str]:
-    """Deterministic honesty + completeness checks on the generated resume text.
-
-    Catches BOTH failure modes observed with local models:
-      (a) fabrication — claims a 'will NOT claim' skill, or alters the real name;
-      (b) laziness — leaves base-template placeholders or drops the real employer
-          (i.e. didn't actually fill in the profile).
+    """Honesty check on the rendered resume: flag any 'will NOT claim' term that
+    appears. (Metadata is now rendered from the profile, so name/employer/
+    placeholder drift is structurally impossible — only fabricated *content* in
+    bullets/summary/skills can violate, and that's what this catches.)
     """
     violations: list[str] = []
     low = resume_text.lower()
-    experience = experience or {}
-
-    # (a) fabrication: forbidden skills
     for term in forbidden_terms(about_me):
         if re.search(r"(?<![A-Za-z0-9])" + re.escape(term.lower()) + r"(?![A-Za-z0-9])", low):
             violations.append(f"claims forbidden item from profile: '{term}'")
-
-    # (a) fabrication: contact name altered/missing
-    name = (experience.get("contact", {}) or {}).get("name", "").strip()
-    if name and name.lower() not in low:
-        violations.append(f"contact name '{name}' from profile not found (possibly altered)")
-
-    # (b) laziness: leftover template placeholders
-    for ph in _PLACEHOLDERS:
-        if ph.lower() in low:
-            violations.append(f"leftover template placeholder: '{ph}'")
-
-    # (b) laziness: real employer dropped. If the profile lists employers, at
-    # least one must appear (else the model kept the 'Company' placeholder or
-    # invented one).
-    employers = [e.get("company", "").strip() for e in experience.get("experience", []) if e.get("company", "").strip()]
-    if employers and not any(emp.lower() in low for emp in employers):
-        violations.append(f"no real employer from profile present (expected one of: {', '.join(employers)})")
-
     return violations
-
-
-def tailor(
-    jd: ParsedJD,
-    *,
-    rag_snippets: list[str] | None = None,
-    extra_instructions: str = "",
-    num_predict: int = 6144,
-) -> TailorResult:
-    cfg = load_config()
-    model = tailor_model(cfg)
-    messages = build_messages(jd, rag_snippets=rag_snippets, extra_instructions=extra_instructions)
-    # temperature 0: tailoring must hew to the profile, not be "creative".
-    raw = llm.chat(messages, model=model, temperature=0.0, num_predict=num_predict)
-    result = parse_output(raw)
-    if "\\documentclass" not in result.tex or "\\end{document}" not in result.tex:
-        raise ValueError("Tailoring did not return a complete LaTeX document.")
-    return result
-
-
-def repair(tex: str, compile_error: str, *, num_predict: int = 6144) -> str:
-    """Ask the model to fix a LaTeX document that failed to compile."""
-    cfg = load_config()
-    model = tailor_model(cfg)
-    messages = [
-        {"role": "system", "content": SYSTEM},
-        {
-            "role": "user",
-            "content": (
-                "This LaTeX failed to compile with Tectonic (XeTeX). Return ONLY the "
-                "corrected COMPLETE document between the markers, no prose.\n\n"
-                f"Compile error:\n{compile_error}\n\n"
-                f"{TEX_START}\n{tex}\n{TEX_END}\n"
-            ),
-        },
-    ]
-    raw = llm.chat(messages, model=model, temperature=0.0, num_predict=num_predict)
-    return _extract_tex(raw)
