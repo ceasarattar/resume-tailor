@@ -1,48 +1,109 @@
 {
   "contact": {
-    "name": "",
-    "email": "",
+    "name": "Ceasar Attar",
+    "email": "ceasarattar03@gmail.com",
     "phone": "",
-    "location": "",
-    "linkedin": "",
-    "github": "",
-    "website": ""
+    "location": "Chicago, IL",
+    "linkedin": "linkedin.com/in/ceasarattar",
+    "github": "github.com/ceasarattar",
+    "website": "ceasarattar.dev"
   },
   "experience": [
     {
-      "company": "",
-      "title": "",
-      "location": "",
-      "start": "",
-      "end": "",
+      "company": "Raila & Associates",
+      "title": "Database Management Analyst",
+      "location": "Chicago, IL",
+      "start": "May 2025",
+      "end": "Current",
       "bullets": [
-        ""
+        "Led end-to-end architecture, development, and optimization of the firm's core data systems, overseeing all technical software operations.",
+        "Migrated a high-volume query engine from legacy infrastructure to FileMaker, enabling efficient data computation across 2M+ records.",
+        "Developed automated data pipelines with secure API workflows to orchestrate external data exchange and maintain high system integrity.",
+        "Optimized database schemas, indexing, and concurrent batch query execution to reduce latency and improve overall data throughput.",
+        "Designed scalable relational models and multi-user processing flows to ensure reliable performance and long-term maintainability."
+      ]
+    },
+    {
+      "company": "Digital Cash for Information Technology",
+      "title": "Back End Cybersecurity Intern",
+      "location": "Amman, Jordan",
+      "start": "May 2024",
+      "end": "August 2024",
+      "bullets": [
+        "Designed and integrated RESTful APIs to enable seamless real-time data allocation, ensuring high availability across backend systems.",
+        "Optimized backend infrastructure to support CI/CD pipelines for scalable and high-volume data workflows, reducing system latency.",
+        "Implemented lightweight RSA and AES-GCM encryption protocols for API transaction security, ensuring robust software quality.",
+        "Led Agile ceremonies to align cross-functional teams, enhancing delivery speed for core feature deployments by 20%.",
+        "Increased throughput in distributed backend workflows by optimizing connection pooling, cache utilization, and multi-threaded pipelines."
+      ]
+    },
+    {
+      "company": "Association for Computing Machinery",
+      "title": "University of Illinois Chapter",
+      "location": "Chicago, IL",
+      "start": "September 2023",
+      "end": "May 2025",
+      "bullets": [
+        "Performed systems engineering to ensure 99% server uptime for student projects and chapter-hosted events.",
+        "Mentored junior members in fundamental software engineering practices, contributing to higher project quality and collaboration.",
+        "Organized technical workshops on API development, enabling students to gain practical experience in GraphQL and REST.",
+        "Supported special interest group (SIG) events and projects, promoting diverse computing interests across the chapter.",
+        "Boosted recruitment and engagement through social events and hackathons, increasing membership growth and promoting collaboration."
       ]
     }
   ],
   "projects": [
     {
-      "name": "",
-      "tech": [],
+      "name": "Chain Quest",
+      "tech": ["C#", "Rust", "Web3.js", "Unity", "Solana", "Mapbox SDK"],
       "bullets": [
-        ""
+        "Developed a Unity-based AR game with real-time geolocation tracking via the Mapbox SDK for an open-world experience.",
+        "Implemented Web3.js and Solana RPC calls to fetch and validate NFT collectibles dynamically in-game.",
+        "Secured transactions and NFT ownership by integrating Solana smart contracts with wallet authentication using Solana Wallet Adapter.",
+        "Built at HackIllinois '25 on the Solana track."
+      ]
+    },
+    {
+      "name": "Musical Mood Analysis",
+      "tech": ["Python", "Scikit-learn", "XGBoost", "Pandas", "NumPy"],
+      "bullets": [
+        "Built a machine learning system using Pandas and NumPy to preprocess Spotify audio features for mood classification.",
+        "Trained multiple models, including Logistic Regression, Random Forest, and XGBoost, achieving 75% accuracy in predicting song mood.",
+        "Applied StandardScaler and LabelEncoder in Scikit-learn to standardize features and optimize model convergence for mood classification."
+      ]
+    },
+    {
+      "name": "Encrypted Messenger",
+      "tech": ["Java", "MySQL", "Hibernate", "JUnit"],
+      "bullets": [
+        "Developed a secure communication system using object-oriented design (OOD) principles and integrated JUnit test cases.",
+        "Built a multi-threaded architecture to handle high-frequency real-time communication, ensuring low-latency performance.",
+        "Optimized database queries with Hibernate, improving read/write efficiency across high-traffic message storage."
       ]
     }
   ],
   "education": [
     {
-      "school": "",
-      "degree": "",
-      "location": "",
+      "school": "Georgia Institute of Technology",
+      "degree": "Master of Science in Computer Science, Specialization in Artificial Intelligence",
+      "location": "Atlanta, GA",
       "start": "",
-      "end": "",
+      "end": "Expected May 2027",
       "notes": ""
+    },
+    {
+      "school": "University of Illinois at Chicago",
+      "degree": "Bachelor of Science in Computer Science",
+      "location": "Chicago, IL",
+      "start": "2021",
+      "end": "2025",
+      "notes": "52nd Annual Chancellor's Student Service and Leadership Award Recipient"
     }
   ],
   "skills": {
-    "languages": [],
-    "frameworks": [],
-    "tools": [],
-    "other": []
+    "languages": ["Python", "R", "Go", "C", "C++", "C#", "Java", "JavaScript", "TypeScript", "SQL", "F#", "Ruby", "VBA"],
+    "frameworks": ["AWS", "MySQL", "React", "Hibernate", "RESTful API", "Spring Boot", "PostgreSQL", "Azure", "Kafka", "Node.js", "Express.js"],
+    "tools": ["Git", "GitHub", "Jira", "Postman", "FileMaker", "HTML", "CSS", "Arduino", "Docker", "Figma", "RStudio", "Altair AI Studio"],
+    "other": ["Backend Development", "Database Design & Optimization", "Workflow Automation", "Software Architecture", "Application Security", "Foundations of Security (Google)", "Responsive Web Design (freeCodeCamp)", "Back End Development and APIs (freeCodeCamp)"]
   }
 }
