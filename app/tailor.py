@@ -148,6 +148,9 @@ def build_messages(
 - "project_bullets": aligned 1:1 with my projects (same order). Same rules.
 - "skills": skill groups (e.g. label "Languages", "Frameworks", "Tools") containing
   ONLY skills I listed, reordered so job-relevant ones come first.
+- Keep the whole resume to ONE page: at most 3-4 bullets for the most relevant
+  role and 1-2 for older/less-relevant ones; include only the most job-relevant
+  skills (about 8 per group max). Be concise.
 - "changelog": short bullets describing what you tailored.
 - "missing_requirements": each job requirement I do NOT have evidence for in my
   profile. Be honest; this is expected and good.
@@ -215,36 +218,65 @@ _FORBIDDEN_STOP = {
 }
 
 
-def forbidden_terms(about_me: str) -> list[str]:
-    """Pull branded/proper-noun terms from the 'Things I will NOT claim' section."""
+def _not_claim_section(about_me: str) -> tuple[str, str]:
+    """Split about_me into (everything-before-NOT-claim, the-NOT-claim-section)."""
     low = about_me.lower()
     idx = low.find("not claim")
     if idx == -1:
-        return []
-    section = about_me[idx:]
-    nl = section.find("\n## ")
+        return about_me, ""
+    # back up to the start of that heading line
+    head_start = about_me.rfind("\n", 0, idx)
+    before = about_me[: head_start if head_start != -1 else idx]
+    section = about_me[head_start if head_start != -1 else idx:]
+    nl = section.find("\n## ", 3)
     if nl != -1:
+        before = before + section[nl:]
         section = section[:nl]
+    return before, section
+
+
+def forbidden_terms(about_me: str, profile_context: str = "") -> list[str]:
+    """Branded/proper-noun terms from the 'Things I will NOT claim' section that
+    do NOT appear anywhere else in the profile.
+
+    The off-limits section is free prose and often *names real things for context*
+    (e.g. "no experience beyond Raila & Associates / Georgia Tech"). A token that
+    also appears elsewhere in the profile is therefore something the candidate
+    legitimately HAS — not forbidden. Only terms unique to the off-limits section
+    (kdb+, PhD, FPGA, ...) are real tripwires.
+    """
+    _before, section = _not_claim_section(about_me)
+    if not section:
+        return []
+    ctx = profile_context.lower()
     terms, seen = [], set()
-    for raw in re.findall(r"[A-Za-z][A-Za-z0-9+#-]*", section):
-        tok = raw.strip("-")
-        if len(tok) < 2 or tok.upper() in _FORBIDDEN_STOP:
+    # Alphabetic tokens only, length >= 4: this avoids prose noise (sentence words,
+    # acronyms like UIC/ACM, fragments like "M+") while still catching real tech
+    # tripwires (Kafka, FPGA, CUDA, Hadoop, ...). Conservative on purpose — a false
+    # positive here destroys real content on regeneration, so we accept a few misses.
+    for raw in re.findall(r"[A-Za-z]{4,}", section):
+        tok = raw
+        if tok.upper() in _FORBIDDEN_STOP or not any(c.isupper() for c in tok):
             continue
-        if any(c.isupper() for c in tok) and tok.lower() not in seen:
-            seen.add(tok.lower())
-            terms.append(tok)
+        if tok.lower() in seen:
+            continue
+        seen.add(tok.lower())
+        # Skip terms the candidate legitimately has (appear elsewhere in profile).
+        if re.search(r"(?<![A-Za-z0-9])" + re.escape(tok.lower()) + r"(?![A-Za-z0-9])", ctx):
+            continue
+        terms.append(tok)
     return terms
 
 
 def grounding_violations(resume_text: str, *, about_me: str, experience: dict | None = None) -> list[str]:
-    """Honesty check on the rendered resume: flag any 'will NOT claim' term that
-    appears. (Metadata is now rendered from the profile, so name/employer/
-    placeholder drift is structurally impossible — only fabricated *content* in
-    bullets/summary/skills can violate, and that's what this catches.)
+    """Honesty check on the rendered resume: flag any genuinely off-limits term
+    (unique to the 'will NOT claim' section) that appears in the resume.
     """
+    before, _section = _not_claim_section(about_me)
+    profile_context = before + "\n" + json.dumps(experience or {})
     violations: list[str] = []
     low = resume_text.lower()
-    for term in forbidden_terms(about_me):
+    for term in forbidden_terms(about_me, profile_context):
         if re.search(r"(?<![A-Za-z0-9])" + re.escape(term.lower()) + r"(?![A-Za-z0-9])", low):
             violations.append(f"claims forbidden item from profile: '{term}'")
     return violations
