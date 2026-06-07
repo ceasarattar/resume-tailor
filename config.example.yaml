@@ -15,9 +15,16 @@ parse_model: "qwen3:8b"
 embed_model: "nomic-embed-text"
 
 # Tailoring model per tier. Mac (16 GB) uses 8b; Windows may use 14b.
+# For more distinct per-job tailoring, a larger model helps most (e.g. qwen3:14b
+# or qwen3:32b if your machine can run it) — pull it and set it here.
 tailor_model:
   mac: "qwen3:8b"
   windows: "qwen3:14b"
+
+# Tailoring creativity. 0 = deterministic (near-identical resumes across jobs);
+# higher = more distinct per-application tailoring. 0.4 is a good balance. Honesty
+# is enforced regardless by the grounding + metric checks.
+tailor_temperature: 0.4
 
 # RAG retrieval
 rag_top_k: 4
