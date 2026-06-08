@@ -92,6 +92,11 @@ def compile_str(tex: str, out_dir: Path, stem: str = "resume", *, final: bool = 
     return compile_tex(tex_path, out_dir, final=final)
 
 
+def page_count(pdf_path: Path) -> int:
+    """Number of pages in a PDF (used by the one-page fitter)."""
+    return len(PdfReader(str(pdf_path)).pages)
+
+
 def ats_check(pdf_path: Path) -> ATSReport:
     """Verify the PDF's text layer is ATS-safe.
 

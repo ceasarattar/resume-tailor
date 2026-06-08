@@ -39,11 +39,12 @@ async function refreshHealth() {
   const el = $("health");
   try {
     const h = await api("/api/health");
-    const ok = h.ollama && h.tectonic;
+    const ok = h.ok && h.tectonic;
     el.className = "health " + (ok ? "ok" : "bad");
+    const model = h.model ? ` ${h.model}` : "";
     el.textContent = ok
-      ? `ready · ${h.tier} · ollama ${h.ollama}`
-      : `not ready · ollama:${h.ollama || "down"} tectonic:${h.tectonic}`;
+      ? `ready · ${h.provider}${model}`
+      : `not ready · ${h.provider || "llm"}: ${h.detail || "unavailable"} · tectonic:${h.tectonic}`;
   } catch (e) {
     el.className = "health bad";
     el.textContent = "backend unreachable";
@@ -78,7 +79,7 @@ async function doParse() {
 
 async function doGenerate() {
   const jd = $("jd").value.trim();
-  overlay(true, "Tailoring & compiling — this can take a minute on the local model…");
+  overlay(true, "Tailoring, humanizing & fitting to one page — this takes a moment…");
   try {
     const r = await api("/api/generate", {
       method: "POST",
@@ -93,14 +94,18 @@ async function doGenerate() {
     $("pdfFrame").src = r.pdf_url + bust;
     $("pdfLink").href = r.pdf_url + bust;
     $("texLink").href = r.tex_url + bust;
-    let status = r.ats_ok
-      ? "✓ ATS text-layer check passed (1 page, clean extraction)."
-      : "⚠ ATS issues: " + r.ats_issues.join("; ");
+    let status = r.one_page ? "✓ One page" : `⚠ ${r.pages} pages`;
+    status += r.ats_ok
+      ? "  |  ✓ ATS text-layer clean."
+      : "  |  ⚠ ATS issues: " + r.ats_issues.join("; ");
     if (r.grounding_ok === false) {
       status += "  |  ⛔ HONESTY CHECK FAILED — possible fabrication: " +
         (r.grounding_violations || []).join("; ") + ". Review before using.";
-    } else if (r.grounding_ok === true) {
+    } else {
       status += "  |  ✓ Honesty check passed.";
+    }
+    if (r.tells && r.tells.length) {
+      status += "  |  ✎ residual AI tells: " + r.tells.slice(0, 6).join("; ");
     }
     $("atsStatus").textContent = status;
     fillList("changelog", r.changelog);

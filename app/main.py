@@ -78,12 +78,14 @@ def index() -> FileResponse:
 @app.get("/api/health")
 def health() -> dict:
     cfg = load_config()
-    out: dict = {"tier": cfg.get("machine_tier")}
+    out: dict = {}
     try:
-        out["ollama"] = llm.health()
+        h = llm.health()  # {provider, model, ok, detail}
+        out.update(h)
     except Exception as exc:  # noqa: BLE001
-        out["ollama"] = None
-        out["ollama_error"] = str(exc)
+        out["provider"] = None
+        out["ok"] = False
+        out["detail"] = str(exc)
     try:
         out["tectonic"] = bool(_resolve_tectonic(cfg))
     except Exception:  # noqa: BLE001
@@ -109,7 +111,7 @@ async def api_generate(req: GenerateReq) -> dict:
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except llm.OllamaError as exc:
+    except llm.LLMError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:  # compile or other failure
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -125,6 +127,10 @@ async def api_generate(req: GenerateReq) -> dict:
         "ats_issues": res.ats_issues,
         "grounding_ok": res.grounding_ok,
         "grounding_violations": res.grounding_violations,
+        "pages": res.pages,
+        "one_page": res.one_page,
+        "trims": res.trims,
+        "tells": res.tells,
     }
 
 

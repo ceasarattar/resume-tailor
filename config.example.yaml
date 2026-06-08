@@ -1,42 +1,51 @@
 # config.example.yaml — committed template.
-# setup copies this to config.yaml (gitignored) and sets machine_tier.
-# Edit config.yaml, not this file, for machine-specific values.
+# setup copies this to config.yaml (gitignored) and fills machine-specific values.
+# Edit config.yaml, not this file, for machine-specific values (like your API key).
 
-# Ollama OpenAI-compatible endpoint
+# ----------------------------------------------------------------- LLM provider
+# "anthropic" (default, recommended): Claude via the official SDK. Best quality and
+#   the most consistent tailoring + humanization. Needs an API key (below).
+# "ollama": fully local, free, no key — uses a model you've pulled with Ollama.
+provider: "anthropic"
+
+# --- Anthropic (Claude) settings -------------------------------------------------
+# Model. Default is the cheap + accurate Sonnet. Options (cost per resume is rough):
+#   claude-haiku-4-5    cheapest, fast            (~0.5 cent)
+#   claude-sonnet-4-6   best balance (default)    (~1-3 cents)
+#   claude-opus-4-8     highest quality           (~5-10 cents)
+anthropic_model: "claude-sonnet-4-6"
+
+# Your Anthropic API key. PREFER the ANTHROPIC_API_KEY environment variable; this
+# config line is a fallback (config.yaml is gitignored, so it stays on this machine).
+# Create a key at https://platform.claude.com/settings/keys — this is a pay-as-you-go
+# API key, SEPARATE from any ChatGPT/Claude.ai subscription. Add a few dollars of
+# credit and it covers hundreds of resumes.
+anthropic_api_key: ""
+
+# Max output tokens per LLM call (a tailoring plan is well under this).
+anthropic_max_tokens: 4096
+
+# --- Ollama (local fallback) settings -------------------------------------------
+# Only used when provider: "ollama". Also provides embeddings for RAG when available.
 ollama_base_url: "http://localhost:11434/v1"
-
-# Which machine this is. setup sets this: "mac" or "windows".
-# Drives which tailor_model is used below.
-machine_tier: "mac"
-
-# Models. Tags move over time — setup verifies the tag exists at pull time.
-# See https://ollama.com/library if a pull fails.
-parse_model: "qwen3:8b"
-embed_model: "nomic-embed-text"
-
-# Tailoring model per tier. Mac (16 GB) uses 8b; Windows may use 14b.
-# For more distinct per-job tailoring, a larger model helps most (e.g. qwen3:14b
-# or qwen3:32b if your machine can run it) — pull it and set it here.
+machine_tier: "windows"            # "mac" or "windows"; selects tailor_model below
 tailor_model:
   mac: "qwen3:8b"
   windows: "qwen3:14b"
+embed_model: "nomic-embed-text"    # RAG embeddings (best-effort; via Ollama only)
 
-# Tailoring creativity. 0 = deterministic (near-identical resumes across jobs);
-# higher = more distinct per-application tailoring. 0.4 is a good balance. Honesty
-# is enforced regardless by the grounding + metric checks.
-tailor_temperature: 0.4
+# --------------------------------------------------------------------- features
+humanize: true        # run the humanizer pass (natural voice, no AI tells)
+one_page: true        # guarantee a single-page PDF by trimming + recompiling
 
-# RAG retrieval
+# RAG retrieval (past corrections injected into the tailoring prompt)
 rag_top_k: 4
 
-# LaTeX compile
-# Default renderer is Tectonic (XeTeX). Leave tectonic_path as "tectonic" to use
-# the one on PATH; setup may set an absolute path to a downloaded binary.
+# ----------------------------------------------------------------- LaTeX compile
+# Default renderer is Tectonic (XeTeX). Leave as "tectonic" to use the one on PATH;
+# setup may set an absolute path to a downloaded binary.
 tectonic_path: "tectonic"
-# TeX Live pdflatex fallback renderer for a "final submission" build. compile.py
-# uses Tectonic by default and can route a build through this fallback (e.g. a
-# --final flag) for the rare case a specific ATS parser struggles with the XeTeX
-# output. Set `path` to a pdflatex/latexmk binary to enable; null = unavailable.
+# Optional TeX Live pdflatex fallback for a "final submission" build (--final flag).
 pdflatex_fallback:
   path: null
 

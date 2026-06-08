@@ -29,13 +29,31 @@ def esc(text) -> str:
     return "".join(_LATEX_ESCAPE.get(ch, ch) for ch in str(text))
 
 
-def _preamble() -> str:
+def _preamble(density: dict | None = None) -> str:
     """Everything up to and including \\begin{document} from base-resume.tex,
     so the renderer reuses the audited, ATS-safe preamble and macros.
+
+    `density` is the fitter's last-resort knob for squeezing onto one page:
+      {"font_scale": 0.96, "line_spread": 0.97}. font_scale shrinks the main
+      font via fontspec Scale; line_spread tightens leading. Both default to 1.0
+      (the audited base appearance) and are only nudged when content trimming
+      alone can't reach a single page.
     """
     tex = PATHS.base_resume.read_text(encoding="utf-8")
     marker = r"\begin{document}"
     head = tex.split(marker, 1)[0]
+    if density:
+        scale = density.get("font_scale")
+        if scale and abs(float(scale) - 1.0) > 1e-6:
+            # Patch our own known options block in base-resume.tex.
+            head = head.replace(
+                "  Kerning        = Off,",
+                f"  Scale          = {float(scale):.3f},\n  Kerning        = Off,",
+                1,
+            )
+        ls = density.get("line_spread")
+        if ls and abs(float(ls) - 1.0) > 1e-6:
+            head = head + f"\\linespread{{{float(ls):.3f}}}\n"
     return head + marker + "\n"
 
 
@@ -167,6 +185,7 @@ def render_resume(
     skills: dict,
     experience_bullets: list[list[str]] | None = None,
     project_bullets: list[list[str]] | None = None,
+    density: dict | None = None,
 ) -> str:
     """Assemble the full compile-ready .tex."""
     name = esc(contact.get("name") or "Your Name")
@@ -189,4 +208,4 @@ def render_resume(
         if section:
             body_parts += [section, ""]
     body = "\n".join(body_parts)
-    return _preamble() + "\n" + body + "\n\\end{document}\n"
+    return _preamble(density) + "\n" + body + "\n\\end{document}\n"

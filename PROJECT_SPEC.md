@@ -22,13 +22,21 @@ Single user (me). Privacy is not a concern. Must cost nothing to run repeatedly.
 - Default model must run well on the 16 GB Mac. The Windows box may optionally use
   a larger model via a config flag.
 
-## 3. Tech stack (decided — do not substitute without asking)
-- **LLM runtime:** Ollama (OpenAI-compatible endpoint at http://localhost:11434/v1).
-- **Default model:** `qwen3:8b` (Q4_K_M, ~5 GB). Windows-optional tier: `qwen3:14b`.
-  Model tags MUST live in `config.yaml`, not hardcoded. Tags move over time —
-  the setup script must verify the tag exists at pull time and fail loudly with a
-  pointer to https://ollama.com/library if it doesn't.
-- **Embeddings (for RAG):** `nomic-embed-text` via Ollama.
+## 3. Tech stack
+> **UPDATE (Claude-first):** the LLM backend is now **provider-agnostic**
+> (`provider` in `config.yaml`). Default is **`anthropic`** — Claude via the
+> official SDK, structured outputs + prompt caching — for far better, more
+> consistent tailoring and humanization. **`ollama`** remains as a free, fully-local
+> fallback. The Ollama details below describe that fallback path.
+- **LLM runtime (default):** Anthropic Claude via the official `anthropic` Python
+  SDK (`messages.parse(output_format=...)`). Model in `config.yaml`
+  (`anthropic_model`, default `claude-sonnet-4-6`; `claude-haiku-4-5` cheapest,
+  `claude-opus-4-8` best). Key via `ANTHROPIC_API_KEY` env or `config.yaml`.
+- **LLM runtime (fallback):** Ollama (OpenAI-compatible endpoint at
+  http://localhost:11434/v1). Local model tags live in `config.yaml`
+  (e.g. `qwen3:14b`); setup pulls them only with `--with-ollama`.
+- **Embeddings (for RAG):** `nomic-embed-text` via Ollama (best-effort; RAG also
+  injects `corrections.md` in full regardless, so embeddings are optional).
 - **Backend:** Python + FastAPI. Serves the browser UI AND an endpoint the Chrome
   extension POSTs to. Enable CORS for the extension origin.
 - **Browser UI:** plain HTML/CSS/JS served by FastAPI (no heavy framework). Must
@@ -116,8 +124,16 @@ resume-tailor/
    (e) NEVER invents experience, employers, dates, metrics, or anything listed under
    "Things I will NOT claim" in about-me.md, (f) stays one page, single column.
    It must also return a short changelog and a list of JD requirements I appear to
-   be missing (flag, don't fake).
-5. **Compile (compile.py):** Run Tectonic → PDF. Run the text-layer ATS check.
+   be missing (flag, don't fake). The model returns a STRUCTURED PLAN, not LaTeX.
+4b. **Humanize (humanize.py):** rewrite the summary + every bullet into natural,
+   concrete, senior-engineer English and strip AI/boilerplate tells, preserving
+   every fact/metric/date verbatim (a metric guard reverts any line whose numbers
+   changed). A deterministic linter reports residual tells.
+4c. **Fit to one page (fit.py):** render → compile → count pages; if it spills,
+   trim the least-relevant material first (bullets → projects → summary → a small
+   density nudge → skills) and recompile until exactly one page. This GUARANTEES
+   one page; the model decides relevance, the fitter decides how much fits.
+5. **Compile (compile.py):** Tectonic → PDF (driven by the fitter). Text-layer ATS check.
 6. **Store (store.py):** Write `tailored.tex`, `resume.pdf`, `jd.md` into
    `outputs/<date>_<company>_<role>/`; append an entry to `applications.json`
    (date, company, role, path, status="generated", missing_requirements,

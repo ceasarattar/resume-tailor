@@ -1,19 +1,19 @@
 """Parse a raw job description into a structured brief + a compact jd.md.
 
-Calls the local LLM with a JSON schema (Ollama `format` param) at temperature 0,
-validates with Pydantic, retries once with a larger token budget on failure.
+Calls the configured LLM with a JSON schema (structured output), validates with
+Pydantic. The provider layer (app/llm.py) constrains the model to the schema, so
+the result is reliable across both Claude and Ollama.
 """
 from __future__ import annotations
 
 import datetime as _dt
-import json
 import re
 from pathlib import Path
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
 from . import llm
-from .config import PATHS, load_config
+from .config import PATHS
 
 
 class ParsedJD(BaseModel):
@@ -26,44 +26,27 @@ class ParsedJD(BaseModel):
 
 
 SYSTEM = (
-    "You extract structured data from job descriptions. Output ONLY JSON matching "
-    "the schema. Do not invent requirements that are not in the text. Pick 6-8 of "
-    "the most important ATS keywords (skills, tools, technologies)."
+    "You extract structured data from job descriptions for a resume-tailoring tool. "
+    "Be precise and faithful to the posting: do not invent requirements that are not "
+    "in the text. For keywords, pick the 6-8 most important ATS terms (concrete "
+    "skills, tools, technologies, and methodologies) a resume screener would scan for."
 )
 
 
-def _prompt(jd_text: str) -> list[dict[str, str]]:
-    schema = json.dumps(ParsedJD.model_json_schema(), indent=2)
-    user = (
-        f"JSON schema:\n{schema}\n\n"
-        f"Job description:\n\"\"\"\n{jd_text.strip()}\n\"\"\"\n\n"
-        "Return only the JSON object."
-    )
-    return [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]
-
-
 def parse_jd(jd_text: str) -> ParsedJD:
-    """Parse JD text into a ParsedJD. Retries once with a larger token budget."""
-    cfg = load_config()
-    model = cfg.get("parse_model", "qwen3:8b")
-    schema = ParsedJD.model_json_schema()
-    messages = _prompt(jd_text)
-
-    last_err: Exception | None = None
-    for num_predict in (1536, 3072):
-        raw = llm.chat(messages, model=model, temperature=0.0, fmt=schema, num_predict=num_predict)
-        try:
-            return ParsedJD.model_validate_json(raw)
-        except ValidationError as exc:
-            last_err = exc
-            # Try to salvage a JSON object embedded in extra prose.
-            match = re.search(r"\{.*\}", raw, re.DOTALL)
-            if match:
-                try:
-                    return ParsedJD.model_validate_json(match.group(0))
-                except ValidationError as exc2:
-                    last_err = exc2
-    raise ValueError(f"Could not parse JD into valid JSON after retry: {last_err}")
+    """Parse JD text into a structured ParsedJD via the configured LLM provider."""
+    user = (
+        "Extract the structured fields from this job description.\n\n"
+        f'"""\n{jd_text.strip()}\n"""'
+    )
+    try:
+        return llm.complete_json(
+            system=SYSTEM, user=user, schema_model=ParsedJD, max_tokens=1536
+        )
+    except llm.LLMError:
+        raise
+    except Exception as exc:  # validation / transport
+        raise ValueError(f"Could not parse the job description into structured data: {exc}")
 
 
 def _slug(text: str, fallback: str) -> str:

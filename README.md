@@ -1,83 +1,107 @@
 # Resume Tailor
 
-A free, local, cross-platform (macOS + Windows) tool that turns a pasted job
-description into an **ATS-safe, single-column PDF résumé** tailored from *your*
-stored profile — and **never invents anything**. Everything runs locally via
-[Ollama](https://ollama.com); nothing is sent to the cloud.
+Turn a pasted job description into an **ATS-safe, single-column, one-page PDF
+résumé** tailored from *your* stored profile — written to sound like a human, and
+**never inventing anything**.
 
-How it works: a local LLM parses the JD and produces **structured content**
-(tailored summary, rephrased bullets, ordered skills); Python deterministically
-renders the LaTeX and compiles it with Tectonic. Because the model never emits
-LaTeX or your contact/dates, résumés always compile and the facts stay true to
-`profile/`. A deterministic **honesty gate** blocks anything you listed as
-off-limits.
+How it works:
+1. **Parse** — the LLM turns the JD into a structured brief (role, must-haves, ATS keywords).
+2. **Tailor** — it selects, reorders, and rephrases *your real* bullets through the
+   lens of that job, reframing them in the job's vocabulary (never adding skills you
+   don't have). It returns **structured content**, never LaTeX.
+3. **Humanize** — a dedicated pass rewrites every line into natural, concrete,
+   senior-engineer English and strips AI/boilerplate tells ("leverage", "robust",
+   "seamless", "in order to", …) — while preserving every fact, metric, and date.
+4. **Fit to one page** — Python renders the LaTeX, compiles with Tectonic, counts
+   pages, and trims the least-relevant material first until it's *exactly one page*.
+5. **Check** — an ATS text-layer check (clean, selectable text) and an **honesty
+   gate** (blocks anything in your "will NOT claim" list and any invented metric).
 
-## Quickstart (macOS)
+Because the model never emits LaTeX or your contact/dates, résumés always compile
+and the facts stay true to `profile/`.
 
-```sh
-git clone https://github.com/ceasarattar/resume-tailor.git
-cd resume-tailor
-./setup.sh          # installs Homebrew, Ollama, Tectonic, models, venv, deps
-# → fill in profile/about-me.md and profile/experience.json with YOUR real info
-./run.sh            # opens http://localhost:8000
-```
+## LLM provider
 
-Then in the browser: paste a job description → **Parse** → confirm company/role →
-**Generate**. The tailored résumé lands in `outputs/<date>_<company>_<role>/`.
+The tool is provider-agnostic (set `provider` in `config.yaml`):
+
+- **`anthropic` (default, recommended)** — Claude via the official SDK. Best quality
+  and most consistent. Needs an **API key** (pay-as-you-go, *separate from any
+  ChatGPT/Claude.ai subscription*). A tailored résumé costs roughly **a cent**.
+  Default model `claude-sonnet-4-6`; switch to `claude-haiku-4-5` (cheapest) or
+  `claude-opus-4-8` (best) in `config.yaml`.
+- **`ollama`** — fully local, free, no key. Uses a model you've pulled (e.g.
+  `qwen3:14b`). Lower quality than Claude but $0.
+
+## Quickstart
 
 ### Windows (PowerShell)
 
 ```powershell
 git clone https://github.com/ceasarattar/resume-tailor.git
 cd resume-tailor
-./setup.ps1         # winget installs; downloads Tectonic to .tools/
-./run.bat
+./setup.ps1                       # installs Python, Git, Tectonic, venv, deps
+$env:ANTHROPIC_API_KEY = "sk-ant-..."   # or set it in config.yaml
+./run.bat                         # opens http://localhost:8000
 ```
 
-Setup is **idempotent** — safe to re-run. It installs the tools, starts Ollama,
-pulls the models (`qwen3` + `nomic-embed-text`), creates `.venv`, installs deps,
-writes `config.yaml`, and runs a smoke test.
+### macOS
+
+```sh
+git clone https://github.com/ceasarattar/resume-tailor.git
+cd resume-tailor
+./setup.sh                        # installs Homebrew, Python, Tectonic, venv, deps
+export ANTHROPIC_API_KEY="sk-ant-..."   # or set it in config.yaml
+./run.sh                          # opens http://localhost:8000
+```
+
+Get a key at <https://platform.claude.com/settings/keys> (add a few dollars of
+credit). Prefer to run **fully local for free**? Run `./setup.ps1 -WithOllama`
+(or `./setup.sh --with-ollama`) and the setup sets `provider: ollama` for you.
+
+Setup is **idempotent** — safe to re-run.
 
 ## Fill in your profile (required)
 
-The system will refuse to generate from an empty profile — it won't make up a
+The system refuses to generate from an empty profile — it won't make up a
 background for you. Edit:
 
 - **`profile/experience.json`** — contact, jobs (company/title/dates/bullets),
   projects, education, skills. *All metadata on the résumé comes from here.*
 - **`profile/about-me.md`** — your story, and a **"Things I will NOT claim"**
-  list (e.g. tools you've never used, degrees you don't hold). The honesty gate
-  treats these as forbidden and blocks any résumé that claims them.
+  list (tools you've never used, degrees you don't hold). The honesty gate treats
+  these as forbidden and blocks any résumé that claims them or invents a metric.
 
 ## Using it
 
-- **CLI:** `./.venv/bin/python -m app.cli path/to/jd.txt`
-- **Browser:** `./run.sh` → http://localhost:8000
-- **Chrome extension:** load `extension/` unpacked (see `extension/README.md`) to
-  capture a JD straight off a job posting.
-- **Corrections:** the "this output is wrong →" box appends a rule to
+- **Browser:** `./run.bat` / `./run.sh` → <http://localhost:8000> → paste JD →
+  **Parse** → confirm company/role → **Generate**. The result lands in
+  `outputs/<date>_<company>_<role>/` (`resume.pdf`, `tailored.tex`, `jd.md`).
+- **CLI:** `.venv\Scripts\python.exe -m app.cli path\to\jd.txt` (Windows) /
+  `./.venv/bin/python -m app.cli path/to/jd.txt` (macOS).
+- **Chrome extension:** load `extension/` unpacked to capture a JD off a posting.
+- **Corrections:** the "this output is wrong → " box appends a rule to
   `corrections.md` (applied to every future résumé) and indexes it for retrieval.
 
-Each run also flags **"possibly missing requirements"** — JD asks you can't
-truthfully meet — so you know the gaps instead of faking them.
+Each run reports the **page count**, what it **trimmed** to fit, any **residual AI
+tells**, and **possibly missing requirements** (JD asks you can't truthfully meet).
 
 ## Configuration
 
-Edit `config.yaml` (created by setup; gitignored). Key fields: model tags,
-`machine_tier`, `rag_top_k`, `tectonic_path`, `pdflatex_fallback.path`,
-`server_port`, `github_auto_push`. Model tags move over time; if a pull fails,
-check <https://ollama.com/library> and update `config.yaml`.
+Edit `config.yaml` (created by setup; gitignored). Key fields: `provider`,
+`anthropic_model`, `anthropic_api_key`, `humanize`, `one_page`, `rag_top_k`,
+`tectonic_path`, `server_port`, `github_auto_push`. See `config.example.yaml` for
+the documented template.
 
 ## Cross-machine sync
 
-`run.sh` / `run.bat` pull on launch and (if `github_auto_push: true`) commit +
-push on exit, so your Mac and Windows machines stay in sync. `config.yaml`,
-`.venv`, `.tools/`, and `data/rag.sqlite` are per-machine (gitignored);
-`profile/`, `corrections.md`, `outputs/`, and `applications.json` sync.
+`run.sh` / `run.bat` pull on launch and (if `github_auto_push: true`) commit + push
+on exit. `config.yaml` (which holds your key), `.venv`, `.tools/`, and
+`data/rag.sqlite` are per-machine (gitignored); `profile/`, `corrections.md`,
+`outputs/`, and `applications.json` sync.
 
 ## Design
 
-See `PROJECT_SPEC.md` for the full design and `CLAUDE.md` for a map of the code.
+See `PROJECT_SPEC.md` for the design and `CLAUDE.md` for a map of the code.
 
 ## License
 
