@@ -91,6 +91,16 @@ def _anthropic_json(system: str, user: str, schema_model: Type[T], max_tokens: i
             "anthropic_api_key in config.yaml."
         ) from exc
     except anthropic.APIError as exc:
+        msg = str(exc).lower()
+        if "credit balance" in msg or "billing" in msg or "purchase credits" in msg:
+            raise LLMError(
+                "Your Anthropic API account has no credit balance. The key is valid, "
+                "but the pay-as-you-go API needs its own credits (separate from any "
+                "Claude.ai/ChatGPT subscription). Add a payment method or credits at "
+                "https://console.anthropic.com/settings/billing — a few dollars covers "
+                "hundreds of resumes. To run free in the meantime, set provider: ollama "
+                "in config.yaml."
+            ) from exc
         raise LLMError(f"Anthropic API request failed ({exc}).") from exc
 
     parsed = getattr(resp, "parsed_output", None)
