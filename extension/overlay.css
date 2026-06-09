@@ -1,0 +1,40 @@
+/* Resume Tailor — Apply Copilot overlay + field highlights. Scoped under #rt-panel
+   and the rt- classes so it never bleeds into the host page's styles. */
+
+#rt-panel {
+  position: fixed; top: 16px; right: 16px; z-index: 2147483647;
+  width: 320px; max-height: 80vh; overflow: auto;
+  background: #0f1115; color: #e6e8eb;
+  font: 13px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  border: 1px solid #2a2f3a; border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.45);
+}
+#rt-head { display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 12px; border-bottom: 1px solid #222733; }
+#rt-title { font-weight: 600; letter-spacing: .2px; }
+#rt-close { cursor: pointer; opacity: .6; font-size: 18px; line-height: 1; }
+#rt-close:hover { opacity: 1; }
+#rt-status { padding: 10px 12px; color: #aab2c0; }
+#rt-status.ok { color: #6ee7a0; }
+#rt-status.warn { color: #f5c451; }
+#rt-status.bad { color: #ff7a7a; }
+#rt-body { padding: 0 12px; }
+#rt-reviewhdr { font-weight: 600; margin: 6px 0; color: #f5c451; }
+.rt-item { display: flex; justify-content: space-between; gap: 8px;
+  padding: 5px 0; border-bottom: 1px solid #1b2029; }
+.rt-lbl { color: #e6e8eb; }
+.rt-note { color: #8b93a3; white-space: nowrap; }
+.rt-allgood { color: #6ee7a0; padding: 6px 0; }
+#rt-actions { display: flex; gap: 8px; padding: 12px; }
+#rt-actions button {
+  flex: 1; cursor: pointer; padding: 9px 10px; border-radius: 8px;
+  border: 1px solid #2a2f3a; background: #1a1f29; color: #e6e8eb; font-weight: 600;
+}
+#rt-fill { background: #2f6fed; border-color: #2f6fed; }
+#rt-fill:hover { background: #4480ff; }
+#rt-actions button:hover { background: #222836; }
+#rt-foot { padding: 0 12px 12px; color: #6b7384; font-size: 11px; }
+
+/* Field highlights on the host page */
+.rt-ok { outline: 2px solid rgba(110,231,160,.7) !important; outline-offset: 1px; border-radius: 4px; }
+.rt-review { outline: 2px dashed rgba(245,196,81,.9) !important; outline-offset: 1px; border-radius: 4px; }

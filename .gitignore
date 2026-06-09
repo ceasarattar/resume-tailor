@@ -10,6 +10,12 @@ config.yaml
 # Local embeddings store
 data/rag.sqlite
 
+# Answer bank (learned application answers) — local + may hold personal data
+data/answers.sqlite
+
+# Real application facts (demographics, work auth, etc.) — personal, per-machine
+profile/application.json
+
 # Tectonic cache + locally-downloaded Tectonic binary
 .tectonic/
 **/tectonic-cache/

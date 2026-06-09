@@ -71,6 +71,29 @@ _WEAK_OPENERS = {
 
 _METRIC_RE = re.compile(r"\d[\d,\.]*\s?%?")  # any number, incl. percentages
 
+_SENT_SPLIT = re.compile(r"[.!?]+\s+")
+
+
+def _burstiness_low(text: str) -> bool:
+    """True if sentence lengths are suspiciously uniform (a strong AI tell).
+
+    Human writing is 'bursty' — it mixes short and long sentences, so the spread
+    of sentence lengths is wide. LLM prose defaults to even, medium sentences.
+    Only meaningful with several sentences, so single-sentence bullets never flag.
+    """
+    sentences = [s for s in _SENT_SPLIT.split(text or "") if s.strip()]
+    if len(sentences) < 3:
+        return False
+    lengths = [len(re.findall(r"[A-Za-z0-9']+", s)) for s in sentences]
+    lengths = [n for n in lengths if n > 0]
+    if len(lengths) < 3:
+        return False
+    mean = sum(lengths) / len(lengths)
+    if mean < 6:  # all very short — not the pattern we're catching
+        return False
+    var = sum((n - mean) ** 2 for n in lengths) / len(lengths)
+    return var ** 0.5 < 3.0  # stdev under ~3 words => uniform => reads as AI
+
 
 def find_ai_tells(text: str) -> list[str]:
     """Return labels for AI/boilerplate tells found in `text`."""
@@ -83,6 +106,9 @@ def find_ai_tells(text: str) -> list[str]:
     # Em-dash overuse: more than one em-dash in a single line reads as AI.
     if text.count("—") + text.count(" -- ") >= 2:
         hits.append("em-dash overuse")
+    # Low burstiness: uniform sentence length across several sentences.
+    if _burstiness_low(text):
+        hits.append("low burstiness (uniform sentence length)")
     # Weak opener.
     first = re.findall(r"[A-Za-z']+", text)
     if first and first[0].lower() in _WEAK_OPENERS:

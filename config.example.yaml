@@ -38,6 +38,11 @@ embed_model: "nomic-embed-text"    # RAG embeddings (best-effort; via Ollama onl
 humanize: true        # run the humanizer pass (natural voice, no AI tells)
 one_page: true        # guarantee a single-page PDF by trimming + recompiling
 
+# Application autofill (Chrome extension). answer_llm lets the answer bank draft
+# grounded free-text answers (e.g. "why this company?") for fields it can't fill
+# deterministically. Set false to keep autofill 100% offline/no-API.
+answer_llm: true
+
 # RAG retrieval (past corrections injected into the tailoring prompt)
 rag_top_k: 4
 

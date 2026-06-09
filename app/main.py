@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import llm, parse, rag, store
+from . import answers, llm, parse, rag, store
 from .cli import generate_resume
 from .compile import _resolve_tectonic
 from .config import PATHS, load_config
@@ -68,6 +68,26 @@ class IngestReq(BaseModel):
     jd: str | None = None
     company: str | None = None
     role: str | None = None
+
+
+class FieldReq(BaseModel):
+    label: str
+    field_type: str = "text"
+    options: list[str] | None = None
+    url: str = ""
+    jd_context: str = ""
+    allow_llm: bool = True
+
+
+class BatchReq(BaseModel):
+    url: str = ""
+    jd_context: str = ""
+    fields: list[FieldReq]
+
+
+class LearnReq(BaseModel):
+    url: str = ""
+    fields: list[dict]
 
 
 @app.get("/")
@@ -160,3 +180,95 @@ def ingest(req: IngestReq) -> dict:
 @app.get("/api/pending")
 def pending() -> dict:
     return {"pending": _pending}
+
+
+# --------------------------------------------------------------- autofill (apply)
+@app.get("/api/profile")
+def api_profile() -> dict:
+    """Normalized profile the extension uses for instant deterministic fills."""
+    return {"profile": answers.load_profile()}
+
+
+@app.post("/api/answer")
+async def api_answer(req: FieldReq) -> dict:
+    """Resolve ONE form field to a truthful answer (bank -> profile -> fuzzy -> LLM)."""
+    res = await run_in_threadpool(
+        answers.resolve,
+        label=req.label,
+        field_type=req.field_type,
+        options=req.options or [],
+        url=req.url,
+        jd_context=req.jd_context,
+        allow_llm=req.allow_llm,
+    )
+    return res.to_dict()
+
+
+@app.post("/api/answer/batch")
+async def api_answer_batch(req: BatchReq) -> dict:
+    """Resolve many fields in one round-trip (the autofill hot path)."""
+    def _run() -> list[dict]:
+        out = []
+        for f in req.fields:
+            res = answers.resolve(
+                label=f.label,
+                field_type=f.field_type,
+                options=f.options or [],
+                url=f.url or req.url,
+                jd_context=f.jd_context or req.jd_context,
+                allow_llm=f.allow_llm,
+            )
+            out.append({"label": f.label, **res.to_dict()})
+        return out
+
+    results = await run_in_threadpool(_run)
+    return {"results": results}
+
+
+@app.post("/api/answer/learn")
+async def api_answer_learn(req: LearnReq) -> dict:
+    """Record what was actually submitted so the bank improves over time."""
+    written = await run_in_threadpool(answers.learn, req.fields, url=req.url)
+    return {"ok": True, "learned": written, "stats": answers.stats()}
+
+
+@app.get("/api/answer/stats")
+def api_answer_stats() -> dict:
+    return answers.stats()
+
+
+@app.get("/api/resume/match")
+def api_resume_match(company: str = "", role: str = "") -> dict:
+    """Find the most recent tailored resume PDF matching this company/role, if any.
+
+    The extension calls this to pick which PDF to attach to a given application.
+    """
+    def norm(s: str) -> str:
+        return "".join(ch for ch in (s or "").lower() if ch.isalnum())
+
+    cwant, rwant = norm(company), norm(role)
+    best = None
+    if PATHS.outputs.exists():
+        for d in sorted(PATHS.outputs.iterdir(), reverse=True):
+            pdf = d / "resume.pdf"
+            if not (d.is_dir() and pdf.exists()):
+                continue
+            name = norm(d.name)
+            score = 0
+            if cwant and cwant in name:
+                score += 2
+            if rwant and rwant in name:
+                score += 1
+            if score > 0 or best is None:
+                cand = {
+                    "out_dir": d.name,
+                    "pdf_url": f"/outputs/{d.name}/resume.pdf",
+                    "score": score,
+                }
+                if best is None or score > best["score"]:
+                    best = cand
+            if best and best["score"] == 3:
+                break
+    if not best:
+        return {"match": None}
+    return {"match": best}

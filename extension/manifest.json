@@ -1,15 +1,49 @@
 {
   "manifest_version": 3,
-  "name": "Resume Tailor — JD Capture",
-  "version": "1.0.0",
-  "description": "Capture a job description from the current page and send it to your local Resume Tailor app.",
-  "permissions": ["activeTab", "scripting"],
+  "name": "Resume Tailor — Apply Copilot",
+  "version": "2.0.0",
+  "description": "Capture job descriptions and autofill applications (Greenhouse, Lever, Ashby, Workday, iCIMS, SmartRecruiters) from your local Resume Tailor profile. Reviews before submit; learns as you apply.",
+  "permissions": ["activeTab", "scripting", "storage", "tabs"],
   "host_permissions": [
     "http://localhost:8000/*",
-    "http://127.0.0.1:8000/*"
+    "http://127.0.0.1:8000/*",
+    "*://*.greenhouse.io/*",
+    "*://*.lever.co/*",
+    "*://*.ashbyhq.com/*",
+    "*://*.myworkdayjobs.com/*",
+    "*://*.icims.com/*",
+    "*://*.smartrecruiters.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Capture JD → Resume Tailor"
-  }
+    "default_title": "Resume Tailor — Apply Copilot"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.greenhouse.io/*",
+        "*://*.lever.co/*",
+        "*://*.ashbyhq.com/*",
+        "*://*.myworkdayjobs.com/*",
+        "*://*.icims.com/*",
+        "*://*.smartrecruiters.com/*"
+      ],
+      "js": ["adapters.js", "content.js"],
+      "css": ["overlay.css"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.linkedin.com/jobs/*", "*://*.linkedin.com/job/*"],
+      "js": ["linkedin.js"],
+      "all_frames": false,
+      "run_at": "document_idle"
+    }
+  ]
 }

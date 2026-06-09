@@ -1,0 +1,66 @@
+{
+  "_README": "Application-fact profile. Contact details (name, email, phone, location, linkedin, github, website) are pulled from experience.json — do NOT duplicate them here. This file holds the EXTRA facts that job-application forms ask for. Copy this to application.json (gitignored) and fill in your real values. HONESTY RULE: only put true values here; leave a field empty ('') or null if you don't want to assert it, and the autofiller will skip it or ask. EEO/demographic fields default to 'Decline to self-identify', which is always safe and honest.",
+
+  "identity": {
+    "first_name": "",
+    "last_name": "",
+    "preferred_name": "",
+    "pronouns": ""
+  },
+
+  "address": {
+    "street": "",
+    "city": "Chicago",
+    "state": "IL",
+    "postal_code": "",
+    "country": "United States"
+  },
+
+  "work_authorization": {
+    "authorized_to_work_in_us": null,
+    "require_visa_sponsorship_now_or_future": null,
+    "visa_status": "",
+    "_note": "Set the two booleans to your TRUE status. If null, the autofiller leaves these fields blank and flags them for you to answer manually — it will never guess your work authorization."
+  },
+
+  "preferences": {
+    "desired_salary": "",
+    "salary_currency": "USD",
+    "willing_to_relocate": null,
+    "remote_preference": "",
+    "earliest_start_date": "",
+    "notice_period": "",
+    "currently_employed": null,
+    "open_to_travel": null
+  },
+
+  "screening": {
+    "are_you_at_least_18": true,
+    "how_did_you_hear": "Company website",
+    "previously_employed_here": false,
+    "non_compete_agreement": false,
+    "_note": "These are common knock-out screener questions. Verify each is true for you."
+  },
+
+  "eeo": {
+    "_note": "US EEO/demographic self-ID. Legally optional. 'Decline to self-identify' is always a valid, honest answer and is the default here. Change only if you choose to disclose.",
+    "gender": "Decline to self-identify",
+    "hispanic_or_latino": "Decline to self-identify",
+    "race_ethnicity": "Decline to self-identify",
+    "veteran_status": "I am not a protected veteran",
+    "disability_status": "I do not wish to answer"
+  },
+
+  "documents": {
+    "resume_strategy": "tailored",
+    "_note": "resume_strategy: 'tailored' uses the per-job resume the app generated for this company/role if one exists, else falls back to a default. 'default' always uses default_resume_path.",
+    "default_resume_path": "",
+    "default_cover_letter_path": ""
+  },
+
+  "defaults": {
+    "_note": "Fallback free-text answers. Leave empty to have the LLM draft a grounded answer per question instead.",
+    "cover_letter": "",
+    "additional_info": ""
+  }
+}

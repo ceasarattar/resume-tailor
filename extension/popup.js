@@ -18,6 +18,40 @@ function setStatus(msg, cls) {
   el.className = cls || "";
 }
 
+// Autofill the application on the current tab. Works on the built-in ATS list
+// automatically; for any other portal we inject the content script on demand.
+document.getElementById("autofill").addEventListener("click", async () => {
+  const btn = document.getElementById("autofill");
+  btn.disabled = true;
+  setStatus("Starting autofill…");
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const send = () =>
+      new Promise((resolve) =>
+        chrome.tabs.sendMessage(tab.id, { type: "rt-autofill" }, (resp) =>
+          resolve(chrome.runtime.lastError ? null : resp)
+        )
+      );
+    let resp = await send();
+    if (!resp) {
+      // No content script on this (unknown) site yet — inject, then retry.
+      setStatus("Injecting on this page…");
+      await chrome.scripting.insertCSS({ target: { tabId: tab.id, allFrames: true }, files: ["overlay.css"] });
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        files: ["adapters.js", "content.js"],
+      });
+      resp = await send();
+    }
+    setStatus(resp && resp.ok ? "Autofill running — see the panel on the page." : "Couldn't start. Reload the page and retry.", resp && resp.ok ? "ok" : "bad");
+    if (resp && resp.ok) window.close();
+  } catch (e) {
+    setStatus("Failed: " + e.message, "bad");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 document.getElementById("capture").addEventListener("click", async () => {
   const btn = document.getElementById("capture");
   btn.disabled = true;

@@ -20,6 +20,17 @@ How it works:
 Because the model never emits LaTeX or your contact/dates, résumés always compile
 and the facts stay true to `profile/`.
 
+## Apply Copilot (autofill applications)
+
+The other half: a Chrome extension that **autofills the actual application** on
+Greenhouse, Lever, Ashby, Workday, iCIMS, SmartRecruiters (or any portal) from the
+same profile, with the same honesty contract — it never guesses work authorization,
+never invents answers, and **stops for your review before submit**. It learns every
+answer you give, so forms get faster over time. On LinkedIn jobs that redirect to an
+external site, it captures the JD and follows the link. See **[APPLY_SPEC.md](APPLY_SPEC.md)**
+for the architecture and **[extension/README.md](extension/README.md)** to install it.
+Fill `profile/application.json` (from `application.example.json`) first.
+
 ## LLM provider
 
 The tool is provider-agnostic (set `provider` in `config.yaml`):
