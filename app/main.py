@@ -28,14 +28,28 @@ from .config import PATHS, load_config
 
 app = FastAPI(title="Resume Tailor")
 
-# The Chrome extension posts from a chrome-extension:// origin; allow that plus
-# localhost. This is a local single-user tool, so the policy is permissive.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origin_regex=r"^(chrome-extension://.*|https?://localhost(:\d+)?|https?://127\.0\.0\.1(:\d+)?)$",
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# The extension's content script runs in the ATS *page's* origin (e.g.
+# greenhouse.io) and calls this local server. We reflect any origin and answer
+# Chrome's Private Network Access preflight (public page -> localhost). One explicit
+# middleware avoids Starlette CORS quirks with the PNA header. Local single-user
+# server bound to localhost, so the permissive policy is fine.
+from starlette.responses import Response as _Response  # noqa: E402
+
+
+@app.middleware("http")
+async def _cors_pna(request, call_next):
+    origin = request.headers.get("origin", "*")
+    if request.method == "OPTIONS":
+        resp = _Response(status_code=200)
+    else:
+        resp = await call_next(request)
+    resp.headers["Access-Control-Allow-Origin"] = origin
+    resp.headers["Access-Control-Allow-Methods"] = "*"
+    resp.headers["Access-Control-Allow-Headers"] = "*"
+    resp.headers["Access-Control-Allow-Private-Network"] = "true"
+    resp.headers["Access-Control-Max-Age"] = "600"
+    resp.headers["Vary"] = "Origin"
+    return resp
 
 PATHS.outputs.mkdir(parents=True, exist_ok=True)
 app.mount("/outputs", StaticFiles(directory=str(PATHS.outputs)), name="outputs")
