@@ -13,6 +13,11 @@ data/rag.sqlite
 # Answer bank (learned application answers) — local + may hold personal data
 data/answers.sqlite
 
+# Discovery pipeline: job cache/state + the review queue (queue.json holds
+# resolved personal answers). Local + per-machine.
+data/jobs.sqlite
+data/queue.json
+
 # Real application facts (demographics, work auth, etc.) — personal, per-machine
 profile/application.json
 

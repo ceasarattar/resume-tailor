@@ -87,6 +87,26 @@ def anthropic_max_tokens(cfg: dict[str, Any] | None = None) -> int:
     return int(cfg.get("anthropic_max_tokens", 4096))
 
 
+def judge_model(cfg: dict[str, Any] | None = None) -> str:
+    """Cheap model for the high-volume discovery fit-judge (a classification task).
+
+    Defaults to the cheapest capable model per provider so screening hundreds of
+    jobs costs cents, while résumé tailoring keeps the quality model. Override with
+    `discovery.judge_model` in config.yaml.
+    """
+    cfg = load_config() if cfg is None else cfg
+    explicit = ((cfg.get("discovery") or {}).get("judge_model") or "").strip()
+    if explicit:
+        return explicit
+    if provider(cfg) == "ollama":
+        # Smaller/faster local model for screening; falls back to the tailor model.
+        tm = cfg.get("tailor_model")
+        if isinstance(tm, dict):
+            return tm.get("mac") or "qwen3:8b"
+        return "qwen3:8b"
+    return "claude-haiku-4-5"
+
+
 # --------------------------------------------------------------- ollama (fallback)
 def tailor_model(cfg: dict[str, Any] | None = None) -> str:
     """Resolve the local (Ollama) tailoring model for the current machine tier.

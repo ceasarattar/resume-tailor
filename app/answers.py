@@ -149,6 +149,20 @@ def _builtin_value(sig_text: str, p: dict):
     if has(" portfolio", " website", " personal site", " personal url", " web site"):
         return _https(c.get("website", "")), "text"
 
+    # --- work authorization (checked BEFORE address so a question like "authorized
+    #     to work in the country in which you are applying" isn't captured by the
+    #     generic country rule). Never guessed: bool may be None. ---
+    if has(" sponsorship", " sponsor", " require visa", " need visa"):
+        v = wa.get("require_visa_sponsorship_now_or_future")
+        return (None if v is None else bool(v)), "bool"
+    if has(" authorized to work", " legally authorized", " right to work",
+           " work authorization", " eligible to work", " authorized for employment",
+           " authorized to be employed"):
+        v = wa.get("authorized_to_work_in_us")
+        return (None if v is None else bool(v)), "bool"
+    if has(" visa status", " immigration status", " citizenship status"):
+        return wa.get("visa_status", ""), "text"
+
     # --- address ---
     if has(" street", " address line 1", " address line", " mailing address") or s.strip() == "address":
         return addr.get("street", ""), "text"
@@ -162,17 +176,6 @@ def _builtin_value(sig_text: str, p: dict):
         return addr.get("country", ""), "text"
     if has(" location", " where are you", " based in", " current location"):
         return c.get("location", ""), "text"
-
-    # --- work authorization (never guessed: bool may be None) ---
-    if has(" sponsorship", " sponsor", " require visa", " need visa"):
-        v = wa.get("require_visa_sponsorship_now_or_future")
-        return (None if v is None else bool(v)), "bool"
-    if has(" authorized to work", " legally authorized", " right to work",
-           " work authorization", " eligible to work", " authorized for employment"):
-        v = wa.get("authorized_to_work_in_us")
-        return (None if v is None else bool(v)), "bool"
-    if has(" visa status", " immigration status", " citizenship status"):
-        return wa.get("visa_status", ""), "text"
 
     # --- preferences / screening ---
     if has(" salary", " compensation expectation", " expected pay", " desired pay",
@@ -195,7 +198,9 @@ def _builtin_value(sig_text: str, p: dict):
         return (None if v is None else bool(v)), "bool"
     if has(" how did you hear", " referral source", " hear about", " source of application"):
         return scr.get("how_did_you_hear", ""), "text"
-    if has(" previously employed", " worked here before", " former employee"):
+    if has(" previously employed", " worked here before", " former employee",
+           " previously worked", " worked for us", " worked here", " worked at this",
+           " currently or have you previously worked"):
         v = scr.get("previously_employed_here")
         return (None if v is None else bool(v)), "bool"
 

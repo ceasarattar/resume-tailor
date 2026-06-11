@@ -7,3 +7,7 @@ pyyaml>=6.0
 python-multipart>=0.0.9
 pypdf>=4.2
 pdfminer.six>=20240706
+
+# Discovery pipeline: web-wide job scraping (Indeed/Google/ZipRecruiter).
+# Pulls pandas/numpy; on Python 3.14 install wheels only: pip install --only-binary=:all: -U numpy pandas
+python-jobspy>=1.1.80

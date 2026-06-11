@@ -30,6 +30,39 @@ class LLMError(RuntimeError):
     pass
 
 
+# --------------------------------------------------------------- usage tracking
+# Approximate Anthropic pricing, $ per 1M tokens (input, output). For estimates.
+_PRICE = {
+    "claude-haiku-4-5": (1.0, 5.0),
+    "claude-sonnet-4-6": (3.0, 15.0),
+    "claude-opus-4-8": (15.0, 75.0),
+}
+_USAGE: dict[str, dict[str, int]] = {}
+
+
+def _track(model: str, usage) -> None:
+    d = _USAGE.setdefault(model, {"input": 0, "output": 0, "calls": 0})
+    d["input"] += int(getattr(usage, "input_tokens", 0) or 0)
+    d["output"] += int(getattr(usage, "output_tokens", 0) or 0)
+    d["calls"] += 1
+
+
+def reset_usage() -> None:
+    _USAGE.clear()
+
+
+def usage_report() -> dict:
+    """Per-model token usage + an approximate dollar cost for the session so far."""
+    out = {"by_model": {}, "total_cost_usd": 0.0, "total_calls": 0}
+    for model, u in _USAGE.items():
+        pin, pout = _PRICE.get(model, (3.0, 15.0))
+        cost = u["input"] / 1e6 * pin + u["output"] / 1e6 * pout
+        out["by_model"][model] = {**u, "cost_usd": round(cost, 4)}
+        out["total_cost_usd"] = round(out["total_cost_usd"] + cost, 4)
+        out["total_calls"] += u["calls"]
+    return out
+
+
 # Backwards-compatible alias (older modules imported OllamaError).
 OllamaError = LLMError
 
@@ -69,11 +102,12 @@ def _anthropic_client():
     return anthropic.Anthropic(api_key=key)
 
 
-def _anthropic_json(system: str, user: str, schema_model: Type[T], max_tokens: int) -> T:
+def _anthropic_json(system: str, user: str, schema_model: Type[T], max_tokens: int,
+                    model: str | None = None) -> T:
     import anthropic
 
     client = _anthropic_client()
-    model = cfg.anthropic_model()
+    model = model or cfg.anthropic_model()
     system_blocks = [
         {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
     ]
@@ -103,6 +137,10 @@ def _anthropic_json(system: str, user: str, schema_model: Type[T], max_tokens: i
             ) from exc
         raise LLMError(f"Anthropic API request failed ({exc}).") from exc
 
+    try:
+        _track(model, getattr(resp, "usage", None))
+    except Exception:  # noqa: BLE001
+        pass
     parsed = getattr(resp, "parsed_output", None)
     if isinstance(parsed, schema_model):
         return parsed
@@ -116,10 +154,11 @@ def _anthropic_json(system: str, user: str, schema_model: Type[T], max_tokens: i
 
 
 # ----------------------------------------------------------------------- ollama
-def _ollama_json(system: str, user: str, schema_model: Type[T], max_tokens: int) -> T:
+def _ollama_json(system: str, user: str, schema_model: Type[T], max_tokens: int,
+                 model: str | None = None) -> T:
     url = f"{cfg.ollama_native_base()}/api/chat"
     payload = {
-        "model": cfg.tailor_model(),
+        "model": model or cfg.tailor_model(),
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -151,14 +190,20 @@ def complete_json(
     user: str,
     schema_model: Type[T],
     max_tokens: int | None = None,
+    model: str | None = None,
 ) -> T:
-    """Run a single structured completion and return a validated `schema_model`."""
+    """Run a single structured completion and return a validated `schema_model`.
+
+    `model` overrides the provider's default model for this one call — used to
+    route the high-volume fit-judge to a cheap model (e.g. Haiku) while résumé
+    tailoring stays on the quality model.
+    """
     mt = max_tokens or cfg.anthropic_max_tokens()
     provider = cfg.provider()
     if provider == "anthropic":
-        return _anthropic_json(system, user, schema_model, mt)
+        return _anthropic_json(system, user, schema_model, mt, model=model)
     if provider == "ollama":
-        return _ollama_json(system, user, schema_model, mt)
+        return _ollama_json(system, user, schema_model, mt, model=model)
     raise LLMError(
         f"Unknown provider '{provider}' in config.yaml (use 'anthropic' or 'ollama')."
     )

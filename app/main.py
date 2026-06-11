@@ -272,3 +272,42 @@ def api_resume_match(company: str = "", role: str = "") -> dict:
     if not best:
         return {"match": None}
     return {"match": best}
+
+
+# ----------------------------------------------------------------- pipeline (auto)
+class PipelineRunReq(BaseModel):
+    use_llm: bool = True
+    do_tailor: bool = True
+
+
+@app.post("/api/pipeline/run")
+async def api_pipeline_run(req: PipelineRunReq) -> dict:
+    """Run discover -> score -> tailor -> queue once. Heavy; runs off the event loop."""
+    from . import pipeline
+    report = await run_in_threadpool(pipeline.run, use_llm=req.use_llm, do_tailor=req.do_tailor)
+    return report.to_dict()
+
+
+@app.get("/api/pipeline/status")
+def api_pipeline_status() -> dict:
+    from . import jobsdb
+    return {"counts": jobsdb.counts(), "applied_today": jobsdb.applied_today()}
+
+
+@app.get("/api/pipeline/queue")
+def api_pipeline_queue() -> dict:
+    """Review queue: each tailored/queued job with its pre-resolved answer draft."""
+    from . import apply_driver, jobsdb
+    jobs = jobsdb.by_state("queued") + jobsdb.by_state("tailored")
+    return {"queue": [apply_driver.build_draft(j).to_dict() for j in jobs]}
+
+
+@app.post("/api/pipeline/applied")
+def api_pipeline_applied(req: IngestReq) -> dict:
+    """Mark a job applied (the extension calls this after a reviewed submit)."""
+    from . import jobsdb
+    uid = (req.jd_text or req.jd or "").strip()  # reuse field as the uid carrier
+    if not uid:
+        raise HTTPException(status_code=422, detail="missing uid")
+    jobsdb.set_state(uid, "applied", note="submitted via extension")
+    return {"ok": True, "applied_today": jobsdb.applied_today()}

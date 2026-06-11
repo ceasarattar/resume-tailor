@@ -62,3 +62,54 @@ output_dir: "outputs"
 
 # Auto git push on app exit (run.sh / run.bat)
 github_auto_push: true
+
+# ----------------------------------------------------------------- discovery pipeline
+# The autonomous pipeline (python -m app.pipeline run): discover -> score -> tailor
+# -> queue. It reads jobs straight from public ATS board APIs (the same JSON the
+# companies' own careers pages call — stable, structured, ToS-safe), scores each
+# against your real profile, tailors a résumé for the matches, and queues them.
+discovery:
+  max_age_days: 3              # only consider jobs posted within the last N days
+  # --- breadth: scrape the big aggregators (JobSpy: Indeed/Google/ZipRecruiter) ---
+  aggregator:
+    enabled: true
+    sites: ["indeed", "google", "zip_recruiter"]   # indeed = no rate limit, the workhorse
+    location: "United States"
+    hours_old: 72              # JobSpy's freshness filter (3 days)
+    results_per_term: 60       # results pulled per search term per run
+    remotive: true             # also pull the keyless Remotive remote-tech feed
+    search_terms:              # everything related to you
+      - "software engineer"
+      - "software developer"
+      - "data engineer"
+      - "data scientist"
+      - "machine learning engineer"
+      - "ai engineer"
+
+  # --- optional: clean direct-apply boards for specific companies ---
+  #   boards.greenhouse.io/<token>  |  jobs.lever.co/<token>  |  jobs.ashbyhq.com/<token>
+  sources: []                  # e.g. [{ats: greenhouse, token: stripe}]
+  max_per_source: 1000
+
+  # --- cost controls (Claude) ---
+  # The fit-judge is a high-volume classification task -> run it on a cheap model.
+  # Tailoring (creative + honesty-critical) stays on anthropic_model (e.g. Sonnet).
+  judge_model: "claude-haiku-4-5"
+  judge_per_company: 2         # LLM-judge only the N most promising roles per company
+  max_per_company: 2           # tailor/apply at most N roles per company
+  score_cap: 120               # max LLM fit-judgments per run (Haiku ~cents; resumable)
+  tailor_cap: 8                # max résumés generated per run (the real $ — Sonnet)
+
+  match:
+    min_score: 0.6             # recommend only if fit-judge score >= this
+    min_salary: 90000          # drop roles whose stated max pay is below this (unstated = kept)
+    # Location rule: accept ONLY US-remote roles OR onsite/hybrid roles in the
+    # locations_include geography (set it to where you can physically work).
+    remote_ok: true
+    locations_include: ["chicago","illinois"]
+    titles_include: ["engineer","developer","software","backend","frontend","full stack","data","platform","infrastructure","security","machine learning","sde","analytics","scientist"]
+    titles_exclude: ["senior","sr."," sr ","staff","principal","lead","manager","director","vp","head of","architect","sales"," ii"," iii"," phd"]
+
+  apply:
+    mode: review               # "review" (fill -> human approves) | "auto" (guardrailed)
+    daily_cap: 15              # hard cap on auto-submits per day
