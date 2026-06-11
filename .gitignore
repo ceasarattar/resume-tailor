@@ -37,3 +37,7 @@ Thumbs.db
 
 # Playwright visual-test output
 .playwright-mcp/
+
+# Apply-runner browser profile + test profiles
+data/browser_profile/
+.pw_test_profile/

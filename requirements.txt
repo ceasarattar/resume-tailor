@@ -11,3 +11,7 @@ pdfminer.six>=20240706
 # Discovery pipeline: web-wide job scraping (Indeed/Google/ZipRecruiter).
 # Pulls pandas/numpy; on Python 3.14 install wheels only: pip install --only-binary=:all: -U numpy pandas
 python-jobspy>=1.1.80
+
+# Apply-execution: drive a real browser to autofill applications to the review gate.
+# After install: python -m playwright install chromium
+playwright>=1.40

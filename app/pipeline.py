@@ -265,6 +265,10 @@ def main(argv: list[str] | None = None) -> int:
     p_q = sub.add_parser("queue", help="list jobs ready to apply")
     p_q.add_argument("-n", type=int, default=20)
 
+    p_a = sub.add_parser("apply", help="open queued jobs in a real browser and autofill to review")
+    p_a.add_argument("-n", type=int, default=1, help="how many queued jobs to open")
+    p_a.add_argument("--submit", action="store_true", help="also click Submit (use deliberately)")
+
     args = ap.parse_args(argv)
 
     if args.cmd == "status" or args.cmd is None:
@@ -278,6 +282,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  [{j.get('score')}] {j['company']} — {j['title']}  ({j['ats']})")
             print(f"      apply: {j['apply_url']}")
             print(f"      resume: {j.get('resume_path')}")
+        return 0
+
+    if args.cmd == "apply":
+        from . import apply_runner
+        apply_runner.apply_jobs(limit=args.n, submit=args.submit, headed=True)
         return 0
 
     if args.cmd == "run":
