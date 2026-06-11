@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <style>
-    body { width: 300px; font: 13px system-ui, sans-serif; margin: 0; padding: 14px; background: #181b22; color: #e8eaed; }
-    h1 { font-size: 14px; margin: 0 0 4px; }
-    p { color: #9aa3af; margin: 0 0 12px; font-size: 12px; }
+    body { width: 340px; font: 13px system-ui, sans-serif; margin: 0; padding: 14px; background: #181b22; color: #e8eaed; }
+    h1 { font-size: 14px; margin: 0 0 2px; }
+    .sub { color: #9aa3af; margin: 0 0 10px; font-size: 12px; }
     button { width: 100%; padding: 9px; border: 0; border-radius: 8px; background: #4f8cff; color: #fff; font-weight: 600; cursor: pointer; }
     button:hover { filter: brightness(1.08); }
     button:disabled { opacity: .6; cursor: default; }
@@ -15,17 +15,45 @@
     input { width: 100%; margin-top: 3px; padding: 6px; border-radius: 6px; border: 1px solid #2a2f3a; background: #0e1014; color: #e8eaed; }
     #status { margin-top: 10px; font-size: 12px; min-height: 16px; }
     .ok { color: #36c46a; } .bad { color: #e0a83a; }
+
+    /* Queue */
+    .qhead { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 0 6px; }
+    .qhead b { font-size: 13px; }
+    #refresh { width: auto; padding: 3px 8px; font-size: 11px; background: #2a2f3a; }
+    #queue { max-height: 320px; overflow-y: auto; }
+    .job { border: 1px solid #2a2f3a; border-radius: 8px; padding: 8px; margin-bottom: 7px; background: #0e1014; }
+    .job a.title { color: #cfe0ff; font-weight: 600; text-decoration: none; display: block; line-height: 1.25; }
+    .job a.title:hover { text-decoration: underline; }
+    .meta { color: #8b93a1; font-size: 11px; margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge { background: #1b2330; border-radius: 5px; padding: 1px 5px; }
+    .badge.ready { color: #36c46a; } .badge.review { color: #e0a83a; }
+    .acts { display: flex; gap: 6px; margin-top: 7px; }
+    .acts a, .acts button { flex: 1; font-size: 11px; padding: 6px; border-radius: 6px; }
+    .open { background: #2f6fed; color: #fff; text-align: center; text-decoration: none; font-weight: 600; }
+    .resume { background: transparent; border: 1px solid #2a2f3a; color: #cfe0ff; text-align: center; text-decoration: none; }
+    .applied { background: #1f7a44; color: #fff; }
+    .empty { color: #8b93a1; font-size: 12px; padding: 8px 0; }
+    hr { border: 0; border-top: 1px solid #2a2f3a; margin: 12px 0; }
+    details summary { cursor: pointer; color: #9aa3af; font-size: 12px; }
   </style>
 </head>
 <body>
   <h1>Resume Tailor</h1>
-  <p>Select the job description (or just click capture to grab the page), then send it to your local app.</p>
-  <label>Company (optional)<input id="company" type="text" placeholder="auto-detected if blank" /></label>
-  <label>Role (optional)<input id="role" type="text" placeholder="auto-detected if blank" /></label>
-  <div class="row"><button id="capture">Capture JD → Resume Tailor</button></div>
-  <div class="row"><button id="autofill" style="background:#2f6fed;">Autofill this application</button></div>
-  <div id="status"></div>
-  <a class="ghost" id="open" href="http://localhost:8000" target="_blank" style="margin-top:10px;">Open Resume Tailor</a>
+  <p class="sub" id="appliedToday"></p>
+
+  <div class="qhead"><b>Ready to apply</b><button id="refresh">↻ refresh</button></div>
+  <div id="queue"><div class="empty">Loading…</div></div>
+
+  <hr />
+  <details>
+    <summary>Other tools (capture JD / autofill current page)</summary>
+    <label>Company (optional)<input id="company" type="text" placeholder="auto-detected if blank" /></label>
+    <label>Role (optional)<input id="role" type="text" placeholder="auto-detected if blank" /></label>
+    <div class="row"><button id="capture">Capture JD → Resume Tailor</button></div>
+    <div class="row"><button id="autofill" style="background:#2f6fed;">Autofill this application</button></div>
+    <div id="status"></div>
+    <a class="ghost" id="open" href="http://localhost:8000" target="_blank" style="margin-top:10px;">Open Resume Tailor</a>
+  </details>
   <script src="popup.js"></script>
 </body>
 </html>

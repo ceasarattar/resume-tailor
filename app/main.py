@@ -296,18 +296,41 @@ def api_pipeline_status() -> dict:
 
 @app.get("/api/pipeline/queue")
 def api_pipeline_queue() -> dict:
-    """Review queue: each tailored/queued job with its pre-resolved answer draft."""
+    """Ready-to-apply list for the extension: each job's apply link, score, résumé
+    URL, and whether every field auto-resolved."""
+    from pathlib import Path
+
     from . import apply_driver, jobsdb
-    jobs = jobsdb.by_state("queued") + jobsdb.by_state("tailored")
-    return {"queue": [apply_driver.build_draft(j).to_dict() for j in jobs]}
+    items = []
+    for j in jobsdb.by_state("queued") + jobsdb.by_state("tailored"):
+        draft = apply_driver.build_draft(j).to_dict()
+        out = j.get("resume_path") or ""
+        resume_url = f"/outputs/{Path(out).name}/resume.pdf" if out else ""
+        items.append({
+            "uid": j["uid"],
+            "company": j.get("company") or "",
+            "title": j.get("title") or "",
+            "score": j.get("score"),
+            "ats": j.get("ats") or "",
+            "apply_url": j.get("apply_url") or j.get("url") or "",
+            "posted_at": (j.get("posted_at") or "")[:10],
+            "resume_url": resume_url,
+            "ready": draft["ready"],
+            "review_items": draft["review_items"],
+        })
+    return {"queue": items, "applied_today": jobsdb.applied_today()}
+
+
+class AppliedReq(BaseModel):
+    uid: str
 
 
 @app.post("/api/pipeline/applied")
-def api_pipeline_applied(req: IngestReq) -> dict:
-    """Mark a job applied (the extension calls this after a reviewed submit)."""
-    from . import jobsdb
-    uid = (req.jd_text or req.jd or "").strip()  # reuse field as the uid carrier
+def api_pipeline_applied(req: AppliedReq) -> dict:
+    """Mark a job applied (the extension calls this after you submit)."""
+    uid = (req.uid or "").strip()
     if not uid:
         raise HTTPException(status_code=422, detail="missing uid")
+    from . import jobsdb
     jobsdb.set_state(uid, "applied", note="submitted via extension")
     return {"ok": True, "applied_today": jobsdb.applied_today()}
